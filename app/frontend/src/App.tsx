@@ -24,6 +24,14 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const [executing, setExecuting] = useState(null);
   const [lastResult, setLastResult] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newInterface, setNewInterface] = useState({
+    intfId: '',
+    intfName: '',
+    protType: 'REST',
+    endPoint: '',
+    status: 'ACTIVE'
+  });
 
   const statsData = [
     { name: '09:00', tps: 45 },
@@ -46,6 +54,25 @@ const App = () => {
     } catch (err) {
       console.error(err);
       setLoading(false);
+    }
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post(`${API_BASE}/interfaces`, newInterface);
+      setIsModalOpen(false);
+      setNewInterface({
+        intfId: '',
+        intfName: '',
+        protType: 'REST',
+        endPoint: '',
+        status: 'ACTIVE'
+      });
+      fetchInterfaces();
+    } catch (err) {
+      console.error(err);
+      alert('등록 중 오류가 발생했습니다.');
     }
   };
 
@@ -96,11 +123,103 @@ const App = () => {
                   className="pl-10 pr-4 py-2 bg-white border rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
                 />
               </div>
-              <button className="bg-blue-600 text-white px-4 py-2 rounded shadow-md hover:bg-blue-700 transition font-bold">
+              <button 
+                onClick={() => setIsModalOpen(true)}
+                className="bg-blue-600 text-white px-4 py-2 rounded shadow-md hover:bg-blue-700 transition font-bold"
+              >
                 + 신규 등록
               </button>
             </div>
           </header>
+
+          {/* 등록 모달 */}
+          {isModalOpen && (
+            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="p-6 border-b bg-slate-50">
+                  <h3 className="text-xl font-bold text-slate-900">신규 인터페이스 등록</h3>
+                  <p className="text-slate-500 text-sm">시스템 간 연동을 위한 상세 설정을 입력하세요.</p>
+                </div>
+                <form onSubmit={handleRegister} className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">인터페이스 ID</label>
+                    <input 
+                      required
+                      type="text" 
+                      placeholder="예: INTF-101"
+                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      value={newInterface.intfId}
+                      onChange={(e) => setNewInterface({...newInterface, intfId: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">인터페이스 명칭</label>
+                    <input 
+                      required
+                      type="text" 
+                      placeholder="예: 대외기관 거래 내역 연동"
+                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      value={newInterface.intfName}
+                      onChange={(e) => setNewInterface({...newInterface, intfName: e.target.value})}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">프로토콜</label>
+                      <select 
+                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        value={newInterface.protType}
+                        onChange={(e) => setNewInterface({...newInterface, protType: e.target.value})}
+                      >
+                        <option value="REST">REST (JSON)</option>
+                        <option value="SOAP">SOAP (XML)</option>
+                        <option value="MQ">MQ (Message)</option>
+                        <option value="SFTP">SFTP (File)</option>
+                        <option value="BATCH">BATCH (Job)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">초기 상태</label>
+                      <select 
+                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        value={newInterface.status}
+                        onChange={(e) => setNewInterface({...newInterface, status: e.target.value})}
+                      >
+                        <option value="ACTIVE">활성 (Active)</option>
+                        <option value="INACTIVE">비활성 (Inactive)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">엔드포인트 URL</label>
+                    <input 
+                      required
+                      type="text" 
+                      placeholder="https://api.example.com/v1"
+                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      value={newInterface.endPoint}
+                      onChange={(e) => setNewInterface({...newInterface, endPoint: e.target.value})}
+                    />
+                  </div>
+                  <div className="flex gap-3 mt-8">
+                    <button 
+                      type="button"
+                      onClick={() => setIsModalOpen(false)}
+                      className="flex-1 px-4 py-2 border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-50 transition"
+                    >
+                      취소
+                    </button>
+                    <button 
+                      type="submit"
+                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-md shadow-blue-200 transition"
+                    >
+                      등록하기
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
 
           {/* 주요 통계 지표 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

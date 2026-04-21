@@ -24,6 +24,15 @@ public class InterfaceService {
 
     @Transactional
     public InterfaceEntity registerInterface(InterfaceEntity entity) {
+        if (entity.getIntfId() == null || entity.getIntfId().isBlank()) {
+            throw new IllegalArgumentException("Interface ID is required.");
+        }
+        if (entity.getIntfName() == null || entity.getIntfName().isBlank()) {
+            throw new IllegalArgumentException("Interface Name is required.");
+        }
+        if (interfaceRepository.findByIntfId(entity.getIntfId()).isPresent()) {
+            throw new RuntimeException("Duplicate Interface ID: " + entity.getIntfId());
+        }
         return interfaceRepository.save(entity);
     }
 
