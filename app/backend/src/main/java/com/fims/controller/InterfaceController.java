@@ -1,6 +1,7 @@
 package com.fims.controller;
 
 import com.fims.model.InterfaceEntity;
+import com.fims.model.TransactionLogEntity;
 import com.fims.service.InterfaceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +31,11 @@ public class InterfaceController {
     @PostMapping("/{intfId}/execute")
     public ResponseEntity<Map<String, Object>> executeInterface(@PathVariable String intfId) {
         return ResponseEntity.ok(interfaceService.executeInterface(intfId));
+    }
+
+    @GetMapping("/logs")
+    public ResponseEntity<List<TransactionLogEntity>> getAllLogs() {
+        return ResponseEntity.ok(interfaceService.getAllLogs());
     }
 
     @GetMapping("/stats")

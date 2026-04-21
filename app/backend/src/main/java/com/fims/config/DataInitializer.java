@@ -1,18 +1,23 @@
 package com.fims.config;
 
 import com.fims.model.InterfaceEntity;
+import com.fims.model.TransactionLogEntity;
 import com.fims.repository.InterfaceRepository;
+import com.fims.repository.TransactionLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Configuration;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Configuration
 @RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
 
     private final InterfaceRepository interfaceRepository;
+    private final TransactionLogRepository transactionLogRepository;
 
     @Override
     public void run(String... args) {
@@ -45,6 +50,39 @@ public class DataInitializer implements CommandLineRunner {
                     .protType("MQ")
                     .endPoint("tcp://localhost:61616")
                     .status("ACTIVE")
+                    .build()
+            ));
+        }
+
+        if (transactionLogRepository.count() == 0) {
+            transactionLogRepository.saveAll(List.of(
+                TransactionLogEntity.builder()
+                    .transId(UUID.randomUUID().toString())
+                    .intfId("INTF-001")
+                    .protType("REST")
+                    .status("SUCCESS")
+                    .resultCode("200")
+                    .latencyMs(120L)
+                    .startTime(LocalDateTime.now().minusMinutes(10))
+                    .build(),
+                TransactionLogEntity.builder()
+                    .transId(UUID.randomUUID().toString())
+                    .intfId("INTF-001")
+                    .protType("REST")
+                    .status("SUCCESS")
+                    .resultCode("200")
+                    .latencyMs(145L)
+                    .startTime(LocalDateTime.now().minusMinutes(8))
+                    .build(),
+                TransactionLogEntity.builder()
+                    .transId(UUID.randomUUID().toString())
+                    .intfId("INTF-003")
+                    .protType("SFTP")
+                    .status("FAIL")
+                    .resultCode("E-401")
+                    .responsePayload("Authentication Failed")
+                    .latencyMs(3500L)
+                    .startTime(LocalDateTime.now().minusMinutes(5))
                     .build()
             ));
         }

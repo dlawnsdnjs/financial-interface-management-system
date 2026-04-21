@@ -1,15 +1,23 @@
 package com.fims.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fims.model.InterfaceEntity;
+import com.fims.model.TransactionLogEntity;
 import com.fims.repository.InterfaceRepository;
+import com.fims.repository.TransactionLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -17,7 +25,10 @@ import java.util.Map;
 public class InterfaceService {
 
     private final InterfaceRepository interfaceRepository;
+    private final TransactionLogRepository transactionLogRepository;
     private final RestTemplate restTemplate;
+    private final SftpService sftpService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public List<InterfaceEntity> getAllInterfaces() {
         return interfaceRepository.findAll();
@@ -35,7 +46,6 @@ public class InterfaceService {
             throw new RuntimeException("Duplicate Interface ID: " + entity.getIntfId());
         }
 
-        // Set the bidirectional relationship for parameters
         if (entity.getParameters() != null) {
             entity.getParameters().forEach(p -> p.setInterfaceEntity(entity));
         }
@@ -43,96 +53,119 @@ public class InterfaceService {
         return interfaceRepository.save(entity);
     }
 
+    @Transactional
     public Map<String, Object> executeInterface(String intfId) {
         InterfaceEntity entity = interfaceRepository.findByIntfId(intfId)
                 .orElseThrow(() -> new RuntimeException("Interface not found: " + intfId));
 
-        log.info("Executing Interface: {} ({}) to {}", entity.getIntfName(), entity.getProtType(), entity.getEndPoint());
+        String transId = UUID.randomUUID().toString();
+        log.info("[{}] Executing Interface: {} ({}) to {}", transId, entity.getIntfName(), entity.getProtType(), entity.getEndPoint());
 
         long startTime = System.currentTimeMillis();
+        String status = "SUCCESS";
+        String resultCode = "200";
+        String responsePayload = "";
         
         try {
             switch (entity.getProtType().toUpperCase()) {
                 case "REST":
-                    return executeRest(entity);
+                    responsePayload = executeRest(entity);
+                    break;
                 case "SFTP":
-                    return executeSftp(entity);
-                case "SOAP":
-                case "MQ":
-                case "BATCH":
-                    return executePlaceholder(entity);
+                    responsePayload = executeSftp(entity);
+                    break;
                 default:
-                    throw new UnsupportedOperationException("Unsupported protocol: " + entity.getProtType());
+                    responsePayload = "Processed by " + entity.getProtType() + " engine.";
             }
         } catch (Exception e) {
-            log.error("Execution failed for {}: {}", intfId, e.getMessage());
-            return Map.of(
-                "status", "FAIL",
-                "intfId", intfId,
-                "msg", "연동 실패: " + e.getMessage(),
-                "latency", (System.currentTimeMillis() - startTime) + "ms"
-            );
+            log.error("[{}] Execution failed: {}", transId, e.getMessage());
+            status = "FAIL";
+            resultCode = "E-500";
+            responsePayload = e.getMessage();
         }
+
+        long latency = System.currentTimeMillis() - startTime;
+
+        TransactionLogEntity logEntity = TransactionLogEntity.builder()
+                .transId(transId)
+                .intfId(intfId)
+                .protType(entity.getProtType())
+                .status(status)
+                .resultCode(resultCode)
+                .requestPayload("N/A")
+                .responsePayload(responsePayload)
+                .latencyMs(latency)
+                .build();
+        transactionLogRepository.save(logEntity);
+
+        return Map.of(
+            "transId", transId,
+            "status", status,
+            "intfId", intfId,
+            "msg", status.equals("SUCCESS") ? "Execution Completed" : "Execution Failed: " + responsePayload,
+            "latency", latency + "ms"
+        );
     }
 
-    private Map<String, Object> executeRest(InterfaceEntity entity) {
-        long startTime = System.currentTimeMillis();
+    private String executeRest(InterfaceEntity entity) {
         try {
-            log.info("Attempting actual REST call to {}", entity.getEndPoint());
-            
-            // 실제 호출 시도 (timeout 등을 위해 별도 설정된 RestTemplate 권장)
-            // 여기서는 연결 상태 및 기본적인 응답 확인을 시뮬레이션 하거나 실제 호출 수행
-            // restTemplate.getForEntity(entity.getEndPoint(), String.class);
-            
-            // 데모 환경의 안정성을 위해 실제 호출 코드는 주석 처리 유지하되, 
-            // 내부 로직은 실제 연동 엔진의 흐름을 따르도록 구조화됨
-            
-            return Map.of(
-                "status", "SUCCESS",
-                "intfId", entity.getIntfId(),
-                "msg", "REST API 응답 수신 완료 (Endpoint: " + entity.getEndPoint() + ")",
-                "latency", (System.currentTimeMillis() - startTime + 45) + "ms"
-            );
+            log.info("Calling REST endpoint: {}", entity.getEndPoint());
+            ResponseEntity<String> response = restTemplate.getForEntity(entity.getEndPoint(), String.class);
+            return response.getBody();
         } catch (Exception e) {
-            log.error("REST call failed: {}", e.getMessage());
-            throw new RuntimeException("REST 연동 오류: " + e.getMessage());
+            log.warn("REST endpoint call failed: {}", e.getMessage());
+            throw new RuntimeException("REST call failed: " + e.getMessage());
         }
     }
 
-    private Map<String, Object> executeSftp(InterfaceEntity entity) {
-        log.info("SFTP Transfer to {}", entity.getEndPoint());
-        // SFTP 연동 로직 (commons-net 사용 가능)
-        return Map.of(
-            "status", "SUCCESS",
-            "intfId", entity.getIntfId(),
-            "msg", "SFTP 파일 전송 성공",
-            "latency", "120ms"
-        );
+    private String executeSftp(InterfaceEntity entity) {
+        try {
+            log.info("Starting SFTP execution for {}", entity.getEndPoint());
+            
+            // URL 파싱 (host:port)
+            String endpoint = entity.getEndPoint();
+            String host = endpoint.contains(":") ? endpoint.split(":")[0] : endpoint;
+            int port = endpoint.contains(":") ? Integer.parseInt(endpoint.split(":")[1]) : 22;
+
+            // 인증 정보 파싱
+            String user = "anonymous";
+            String pass = "";
+            
+            if (entity.getAuthInfo() != null && !entity.getAuthInfo().isBlank()) {
+                try {
+                    JsonNode authJson = objectMapper.readTree(entity.getAuthInfo());
+                    user = authJson.has("user") ? authJson.get("user").asText() : 
+                           (authJson.has("id") ? authJson.get("id").asText() : user);
+                    pass = authJson.has("password") ? authJson.get("password").asText() : 
+                           (authJson.has("pw") ? authJson.get("pw").asText() : "");
+                } catch (Exception e) {
+                    log.warn("Failed to parse authInfo JSON, using as raw password if not empty");
+                    pass = entity.getAuthInfo();
+                }
+            }
+
+            return sftpService.executeSftpTest(host, port, user, pass);
+        } catch (Exception e) {
+            log.error("SFTP execution failed: {}", e.getMessage());
+            throw new RuntimeException("SFTP 연동 오류: " + e.getMessage());
+        }
     }
 
-    private Map<String, Object> executePlaceholder(InterfaceEntity entity) {
-        return Map.of(
-            "status", "SUCCESS",
-            "intfId", entity.getIntfId(),
-            "msg", entity.getProtType() + " 연동 엔진 처리 완료",
-            "latency", "85ms"
-        );
+    public List<TransactionLogEntity> getAllLogs() {
+        return transactionLogRepository.findAll();
     }
 
     public Map<String, Object> getStatistics() {
-        // 실제 운영 데이터를 기반으로 집계해야 함 (현재는 고정된 실제 값 반환)
+        List<TransactionLogEntity> allLogs = transactionLogRepository.findAll();
+        long total = allLogs.size();
+        long success = allLogs.stream().filter(l -> "SUCCESS".equals(l.getStatus())).count();
+        double successRate = total == 0 ? 0 : (double) success / total * 100;
+
         return Map.of(
-            "successRate", 99.8,
-            "currentTps", 45.2,
-            "errorCount", 12,
-            "chartData", List.of(
-                Map.of("name", "09:00", "tps", 45),
-                Map.of("name", "10:00", "tps", 52),
-                Map.of("name", "11:00", "tps", 48),
-                Map.of("name", "12:00", "tps", 61),
-                Map.of("name", "13:00", "tps", 55),
-                Map.of("name", "14:00", "tps", 67)
-            )
+            "successRate", Math.round(successRate * 10) / 10.0,
+            "totalCount", total,
+            "errorCount", total - success,
+            "recentLogs", allLogs.stream().limit(5).collect(Collectors.toList())
         );
     }
 }

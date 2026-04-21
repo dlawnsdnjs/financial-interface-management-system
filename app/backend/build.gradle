@@ -20,8 +20,12 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     
-    // SFTP연동을 위한 라이브러리 (Apache Commons Net)
+    // SFTP연동을 위한 라이브러리 (Apache Commons Net & JSch)
     implementation 'commons-net:commons-net:3.10.0'
+    implementation 'com.github.mwiede:jsch:0.2.17'
+    
+    // JSON 파싱용 Jackson
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
     
     // 시연용 H2 DB (인메모리)
     runtimeOnly 'com.h2database:h2'
