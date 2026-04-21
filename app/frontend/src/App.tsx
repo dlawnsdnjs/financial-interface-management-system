@@ -9,7 +9,9 @@ import {
   CheckCircle2, 
   LayoutDashboard,
   Database,
-  Search
+  Search,
+  Plus,
+  Trash2
 } from 'lucide-react';
 import { 
   BarChart,
@@ -30,7 +32,8 @@ const App = () => {
     intfName: '',
     protType: 'REST',
     endPoint: '',
-    status: 'ACTIVE'
+    status: 'ACTIVE',
+    parameters: [{ key: '', value: '' }]
   });
 
   const statsData = [
@@ -57,17 +60,45 @@ const App = () => {
     }
   };
 
+  const handleAddParam = () => {
+    setNewInterface({
+      ...newInterface,
+      parameters: [...newInterface.parameters, { key: '', value: '' }]
+    });
+  };
+
+  const handleRemoveParam = (index) => {
+    const updatedParams = [...newInterface.parameters];
+    updatedParams.splice(index, 1);
+    setNewInterface({ ...newInterface, parameters: updatedParams });
+  };
+
+  const handleParamChange = (index, field, value) => {
+    const updatedParams = [...newInterface.parameters];
+    updatedParams[index][field] = value;
+    setNewInterface({ ...newInterface, parameters: updatedParams });
+  };
+
   const handleRegister = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${API_BASE}/interfaces`, newInterface);
+      // Filter out parameters with empty keys
+      const filteredParams = newInterface.parameters.filter(p => p.key && p.key.trim() !== '');
+
+      const payload = {
+        ...newInterface,
+        parameters: filteredParams
+      };
+
+      await axios.post(`${API_BASE}/interfaces`, payload);
       setIsModalOpen(false);
       setNewInterface({
         intfId: '',
         intfName: '',
         protType: 'REST',
         endPoint: '',
-        status: 'ACTIVE'
+        status: 'ACTIVE',
+        parameters: [{ key: '', value: '' }]
       });
       fetchInterfaces();
     } catch (err) {
@@ -200,6 +231,46 @@ const App = () => {
                       value={newInterface.endPoint}
                       onChange={(e) => setNewInterface({...newInterface, endPoint: e.target.value})}
                     />
+                  </div>
+                  
+                  <div className="pt-2">
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="block text-sm font-bold text-slate-700">추가 인자 (Parameters)</label>
+                      <button 
+                        type="button"
+                        onClick={handleAddParam}
+                        className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded flex items-center gap-1 font-bold transition"
+                      >
+                        <Plus size={14} /> 추가
+                      </button>
+                    </div>
+                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                      {newInterface.parameters.map((param, index) => (
+                        <div key={index} className="flex gap-2 items-center">
+                          <input 
+                            type="text" 
+                            placeholder="Key"
+                            className="flex-1 px-3 py-1.5 border rounded-md text-sm outline-none focus:ring-1 focus:ring-blue-500"
+                            value={param.key}
+                            onChange={(e) => handleParamChange(index, 'key', e.target.value)}
+                          />
+                          <input 
+                            type="text" 
+                            placeholder="Value"
+                            className="flex-1 px-3 py-1.5 border rounded-md text-sm outline-none focus:ring-1 focus:ring-blue-500"
+                            value={param.value}
+                            onChange={(e) => handleParamChange(index, 'value', e.target.value)}
+                          />
+                          <button 
+                            type="button"
+                            onClick={() => handleRemoveParam(index)}
+                            className="text-slate-400 hover:text-red-500 p-1 transition"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                   <div className="flex gap-3 mt-8">
                     <button 

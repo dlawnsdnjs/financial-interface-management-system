@@ -1,5 +1,6 @@
 package com.fims.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -7,6 +8,8 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "TB_INTERFACE")
@@ -35,6 +38,11 @@ public class InterfaceEntity {
 
     @Column(columnDefinition = "TEXT")
     private String authInfo; // 인증 정보
+
+    @OneToMany(mappedBy = "interfaceEntity", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    @Builder.Default
+    private List<InterfaceParameter> parameters = new ArrayList<>();
 
     @Column(nullable = false)
     private String status; // ACTIVE, INACTIVE

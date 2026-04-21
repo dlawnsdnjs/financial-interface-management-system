@@ -33,6 +33,12 @@ public class InterfaceService {
         if (interfaceRepository.findByIntfId(entity.getIntfId()).isPresent()) {
             throw new RuntimeException("Duplicate Interface ID: " + entity.getIntfId());
         }
+
+        // Set the bidirectional relationship for parameters
+        if (entity.getParameters() != null) {
+            entity.getParameters().forEach(p -> p.setInterfaceEntity(entity));
+        }
+
         return interfaceRepository.save(entity);
     }
 
