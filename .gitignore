@@ -3,21 +3,56 @@ node_modules/
 .gradle/
 build/
 
-# IDEs
+# IDEs and Editors
 .idea/
 .vscode/
 *.swp
 *.swo
 *.iml
+.project
+.classpath
+.settings/
 
 # OS files
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Java/Gradle
 bin/
 out/
 .gradle-output-history
+.gradle-execution-history
+*.class
+*.jar
+*.war
+*.ear
 
-# Logs
+# Logs and runtime
 *.log
+logs/
+*.tmp
+*.temp
+
+# Security and Credentials (CRITICAL)
+.env
+.env.*
+!.env.example
+*.jks
+*.p12
+*.pfx
+*.pem
+*.key
+*.pub
+/secrets/
+/config/secrets/
+/certs/
+*id_rsa*
+*id_ed25519*
+credentials.json
+google-services.json
+
+# Backend specific
+app/backend/help.bat
+app/backend/gradlew
+app/backend/gradlew.bat
