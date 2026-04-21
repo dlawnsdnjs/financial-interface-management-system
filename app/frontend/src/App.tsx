@@ -27,6 +27,12 @@ const App = () => {
   const [executing, setExecuting] = useState(null);
   const [lastResult, setLastResult] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [stats, setStats] = useState({
+    successRate: 0,
+    currentTps: 0,
+    errorCount: 0,
+    chartData: []
+  });
   const [newInterface, setNewInterface] = useState({
     intfId: '',
     intfName: '',
@@ -36,17 +42,9 @@ const App = () => {
     parameters: [{ key: '', value: '' }]
   });
 
-  const statsData = [
-    { name: '09:00', tps: 45 },
-    { name: '10:00', tps: 52 },
-    { name: '11:00', tps: 48 },
-    { name: '12:00', tps: 61 },
-    { name: '13:00', tps: 55 },
-    { name: '14:00', tps: 67 },
-  ];
-
   useEffect(() => {
     fetchInterfaces();
+    fetchStats();
   }, []);
 
   const fetchInterfaces = async () => {
@@ -57,6 +55,15 @@ const App = () => {
     } catch (err) {
       console.error(err);
       setLoading(false);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/interfaces/stats`);
+      setStats(res.data);
+    } catch (err) {
+      console.error('Failed to fetch stats', err);
     }
   };
 
@@ -296,15 +303,15 @@ const App = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="bg-white p-6 rounded-xl shadow-sm border">
               <h3 className="text-slate-500 text-sm mb-2 font-medium">실시간 성공률</h3>
-              <div className="text-3xl font-bold text-green-600">99.8%</div>
+              <div className="text-3xl font-bold text-green-600">{stats.successRate}%</div>
               <div className="text-xs text-slate-400 mt-2">전일 대비 +0.2% 상승</div>
             </div>
             <div className="bg-white p-6 rounded-xl shadow-sm border">
               <h3 className="text-slate-500 text-sm mb-2 font-medium">현재 처리 TPS</h3>
-              <div className="text-3xl font-bold">45.2 <span className="text-lg font-normal text-slate-400">/sec</span></div>
+              <div className="text-3xl font-bold">{stats.currentTps} <span className="text-lg font-normal text-slate-400">/sec</span></div>
               <div className="h-10 mt-2">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={statsData}>
+                  <BarChart data={stats.chartData}>
                     <Bar dataKey="tps" fill="#3b82f6" radius={[2, 2, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -312,7 +319,7 @@ const App = () => {
             </div>
             <div className="bg-white p-6 rounded-xl shadow-sm border">
               <h3 className="text-slate-500 text-sm mb-2 font-medium">금일 장애 건수</h3>
-              <div className="text-3xl font-bold text-red-500">12 <span className="text-lg font-normal text-slate-400">건</span></div>
+              <div className="text-3xl font-bold text-red-500">{stats.errorCount} <span className="text-lg font-normal text-slate-400">건</span></div>
               <button className="text-xs text-blue-600 mt-2 hover:underline font-bold">장애 상세 보기 &rarr;</button>
             </div>
           </div>

@@ -31,4 +31,9 @@ public class InterfaceController {
     public ResponseEntity<Map<String, Object>> executeInterface(@PathVariable String intfId) {
         return ResponseEntity.ok(interfaceService.executeInterface(intfId));
     }
+
+    @GetMapping("/stats")
+    public ResponseEntity<Map<String, Object>> getStatistics() {
+        return ResponseEntity.ok(interfaceService.getStatistics());
+    }
 }
