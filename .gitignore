@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+.gradle/
+build/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Java/Gradle
+bin/
+out/
+.gradle-output-history
+
+# Logs
+*.log
