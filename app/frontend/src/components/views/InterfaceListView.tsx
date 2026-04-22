@@ -21,14 +21,14 @@ const InterfaceListView: React.FC<InterfaceListViewProps> = ({
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-bold text-slate-800">Interface Management</h3>
-          <p className="text-sm text-slate-500 mt-1">Register and configure system interfaces.</p>
+          <h3 className="text-lg font-bold text-slate-800">인터페이스 관리</h3>
+          <p className="text-sm text-slate-500 mt-1">시스템 인터페이스를 등록하고 설정합니다.</p>
         </div>
         <button 
           onClick={onOpenCreate}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-all shadow-md active:scale-95"
         >
-          <Plus size={18} /> Add Interface
+          <Plus size={18} /> 인터페이스 추가
         </button>
       </div>
 
@@ -38,11 +38,11 @@ const InterfaceListView: React.FC<InterfaceListViewProps> = ({
           <thead className="bg-slate-50 text-slate-500 font-medium">
             <tr>
               <th className="px-6 py-4">ID</th>
-              <th className="px-6 py-4">Name</th>
-              <th className="px-6 py-4">Protocol</th>
-              <th className="px-6 py-4">Endpoint</th>
-              <th className="px-6 py-4">Status</th>
-              <th className="px-6 py-4 text-center">Actions</th>
+              <th className="px-6 py-4">인터페이스명</th>
+              <th className="px-6 py-4">프로토콜</th>
+              <th className="px-6 py-4">엔드포인트</th>
+              <th className="px-6 py-4">상태</th>
+              <th className="px-6 py-4 text-center">작업</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -70,7 +70,7 @@ const InterfaceListView: React.FC<InterfaceListViewProps> = ({
                     <button 
                       onClick={() => onOpenEdit(intf)}
                       className="p-1.5 text-slate-400 hover:bg-slate-100 rounded transition-colors" 
-                      title="Edit"
+                      title="수정"
                     >
                       <Settings size={16} />
                     </button>
@@ -78,7 +78,7 @@ const InterfaceListView: React.FC<InterfaceListViewProps> = ({
                       onClick={() => onExecute(intf.intfId)}
                       disabled={executing === intf.intfId}
                       className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors" 
-                      title="Run Now"
+                      title="즉시 실행"
                     >
                       <Play size={16} fill="currentColor" />
                     </button>

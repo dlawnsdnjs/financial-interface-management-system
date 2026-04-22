@@ -16,7 +16,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, loading, onRefresh }) => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
           <input 
             type="text" 
-            placeholder="Search interfaces..." 
+            placeholder="인터페이스 검색..." 
             className="pl-10 pr-4 py-2 border border-slate-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
           />
         </div>

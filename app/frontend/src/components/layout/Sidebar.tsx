@@ -18,19 +18,19 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
           onClick={() => setActiveTab('dashboard')}
           className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${activeTab === 'dashboard' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
         >
-          <LayoutDashboard size={20} /> Dashboard
+          <LayoutDashboard size={20} /> 대시보드
         </button>
         <button 
           onClick={() => setActiveTab('interfaces')}
           className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${activeTab === 'interfaces' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
         >
-          <List size={20} /> Interfaces
+          <List size={20} /> 인터페이스 관리
         </button>
         <button className="flex items-center gap-3 p-3 rounded-lg text-slate-400 hover:bg-slate-800 transition-colors">
-          <BarChart3 size={20} /> Analytics
+          <BarChart3 size={20} /> 통계 분석
         </button>
         <button className="flex items-center gap-3 p-3 rounded-lg text-slate-400 hover:bg-slate-800 transition-colors">
-          <Settings size={20} /> System Config
+          <Settings size={20} /> 시스템 설정
         </button>
       </nav>
       <div className="p-4 border-t border-slate-800 text-slate-500 text-xs text-center">

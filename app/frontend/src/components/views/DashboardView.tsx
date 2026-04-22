@@ -30,25 +30,25 @@ const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card 
-          title="Total Transactions" 
+          title="총 트랜잭션" 
           value={stats?.totalCount || 0} 
           icon={<Activity className="text-blue-500" />}
-          subValue="+12% from yesterday"
+          subValue="어제 대비 +12%"
         />
         <Card 
-          title="Success Rate" 
+          title="성공률" 
           value={`${stats?.successRate || 0}%`} 
           icon={<CheckCircle className="text-emerald-500" />}
           trend={stats && stats.successRate > 95 ? 'up' : 'down'}
         />
         <Card 
-          title="Avg Latency" 
+          title="평균 지연 시간" 
           value={`${stats?.avgLatency || 0}ms`} 
           icon={<Clock className="text-amber-500" />}
-          subValue="Target: <200ms"
+          subValue="목표: <200ms"
         />
         <Card 
-          title="Critical Errors" 
+          title="심각한 오류" 
           value={stats?.errorCount || 0} 
           icon={<XCircle className="text-rose-500" />}
           trend={stats && (stats.errorCount === 0) ? 'up' : 'down'}
@@ -58,7 +58,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <h3 className="text-md font-bold text-slate-800 mb-6">Protocol Distribution</h3>
+          <h3 className="text-md font-bold text-slate-800 mb-6">프로토콜별 분포</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -81,8 +81,8 @@ const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
           <h3 className="text-md font-bold text-slate-800 mb-6 flex items-center justify-between">
-            Recent Activity
-            <span className="text-xs font-normal text-slate-400">Real-time</span>
+            최근 활동
+            <span className="text-xs font-normal text-slate-400">실시간</span>
           </h3>
           <div className="flex flex-col gap-4">
             {stats?.recentLogs.map((log) => (
@@ -96,13 +96,13 @@ const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {log.status === 'SUCCESS' ? 
-                    <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded">OK</span> :
+                    <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded">성공</span> :
                     <div className="flex items-center gap-2">
-                      <span className="px-2 py-1 bg-rose-100 text-rose-700 text-[10px] font-bold rounded">FAIL</span>
+                      <span className="px-2 py-1 bg-rose-100 text-rose-700 text-[10px] font-bold rounded">실패</span>
                       <button 
                         onClick={() => onRetry(log.id)}
                         className="p-1.5 text-rose-600 hover:bg-rose-200 rounded-md transition-all shadow-sm bg-white"
-                        title="Retry transaction"
+                        title="재처리 시도"
                       >
                         <RefreshCw size={12} />
                       </button>
@@ -112,7 +112,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             ))}
             {(!stats?.recentLogs || stats.recentLogs.length === 0) && (
-              <div className="text-center py-8 text-slate-400 text-sm italic">No recent transactions</div>
+              <div className="text-center py-8 text-slate-400 text-sm italic">최근 트랜잭션이 없습니다.</div>
             )}
           </div>
         </div>
@@ -121,9 +121,9 @@ const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Interface Quick Control */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="text-md font-bold text-slate-800">Interface Quick Control</h3>
+          <h3 className="text-md font-bold text-slate-800">인터페이스 빠른 제어</h3>
           <button onClick={onNavigateToInterfaces} className="text-xs text-blue-600 font-bold flex items-center gap-1 hover:underline">
-            View All <ArrowRight size={12} />
+            전체 보기 <ArrowRight size={12} />
           </button>
         </div>
         <div className="overflow-x-auto">
@@ -131,9 +131,9 @@ const DashboardView: React.FC<DashboardViewProps> = ({
             <thead className="bg-slate-50 text-slate-500 font-medium">
               <tr>
                 <th className="px-6 py-4">ID</th>
-                <th className="px-6 py-4">Interface Name</th>
-                <th className="px-6 py-4">Protocol</th>
-                <th className="px-6 py-4 text-center">Action</th>
+                <th className="px-6 py-4">인터페이스명</th>
+                <th className="px-6 py-4">프로토콜</th>
+                <th className="px-6 py-4 text-center">작업</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -152,7 +152,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
                       disabled={executing === intf.intfId}
                       className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-md text-xs font-bold hover:bg-blue-700 disabled:opacity-50 transition-all shadow-sm"
                     >
-                      <Play size={12} fill="white" /> {executing === intf.intfId ? 'Running...' : 'Run'}
+                      <Play size={12} fill="white" /> {executing === intf.intfId ? '실행 중...' : '실행'}
                     </button>
                   </td>
                 </tr>

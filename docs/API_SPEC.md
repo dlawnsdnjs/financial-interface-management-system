@@ -3,14 +3,14 @@
 ## 1. 개요
 본 문서는 FIMS 관리자 포털(Frontend)과 관리 서버(Backend) 간의 REST API 규격을 정의합니다.
 
-- **Base URL**: `/api/v1`
-- **Auth**: Header `Authorization: Bearer <JWT_TOKEN>`
+- **기본 URL**: `/api/v1`
+- **인증**: Header `Authorization: Bearer <JWT_TOKEN>`
 
 ## 2. 인터페이스 관리 API
 
 ### 2.1 인터페이스 목록 조회
-- **Endpoint**: `GET /interfaces`
-- **Response**:
+- **엔드포인트**: `GET /interfaces`
+- **응답**:
     ```json
     [
       {
@@ -24,8 +24,8 @@
     ```
 
 ### 2.2 인터페이스 상세 정보 등록
-- **Endpoint**: `POST /interfaces`
-- **Body**:
+- **엔드포인트**: `POST /interfaces`
+- **본문(Body)**:
     ```json
     {
       "intfName": "정산 데이터 SFTP 전송",
@@ -37,14 +37,14 @@
     ```
 
 ### 2.3 인터페이스 정보 수정
-- **Endpoint**: `PUT /interfaces/{intfId}`
-- **Body**: 인터페이스 전체 객체
-- **Response**: 수정된 인터페이스 객체
+- **엔드포인트**: `PUT /interfaces/{intfId}`
+- **본문(Body)**: 인터페이스 전체 객체
+- **응답**: 수정된 인터페이스 객체
 
-### 2.4 인터페이스 즉시 실행 (Manual Execution)
-- **Endpoint**: `POST /interfaces/{intfId}/execute`
-- **Description**: 특정 인터페이스를 즉각 실행하고 결과를 반환받음.
-- **Response**:
+### 2.4 인터페이스 즉시 실행
+- **엔드포인트**: `POST /interfaces/{intfId}/execute`
+- **설명**: 특정 인터페이스를 즉각 실행하고 결과를 반환받음.
+- **응답**:
     ```json
     {
       "transId": "uuid-string",
@@ -59,8 +59,8 @@
 ## 3. 모니터링 및 로그 API
 
 ### 3.1 대시보드 통계 조회
-- **Endpoint**: `GET /monitoring/dashboard`
-- **Response**:
+- **엔드포인트**: `GET /monitoring/dashboard`
+- **응답**:
     ```json
     {
       "totalIntf": 120,
@@ -74,9 +74,9 @@
     ```
 
 ### 3.2 트랜잭션 로그 목록 조회
-- **Endpoint**: `GET /monitoring/logs`
-- **Query Params**: `intfId`, `status`, `startDate`, `endDate`
-- **Response**:
+- **엔드포인트**: `GET /monitoring/logs`
+- **쿼리 파라미터**: `intfId`, `status`, `startDate`, `endDate`
+- **응답**:
     ```json
     {
       "logs": [
@@ -93,8 +93,8 @@
     ```
 
 ### 3.3 실패 건 재처리 (Retry)
-- **Endpoint**: `POST /monitoring/logs/{transId}/retry`
-- **Description**: 실패한 트랜잭션의 원본 페이로드를 사용하여 재전송을 시도함.
+- **엔드포인트**: `POST /monitoring/logs/{transId}/retry`
+- **설명**: 실패한 트랜잭션의 원본 페이로드를 사용하여 재전송을 시도함.
 
 ## 4. 공통 에러 응답
 ```json
