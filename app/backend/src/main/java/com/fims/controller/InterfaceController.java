@@ -13,7 +13,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/interfaces")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:3000") // 특정 오리진만 허용
+@CrossOrigin(origins = "http://localhost:5173") // 특정 오리진만 허용
 public class InterfaceController {
 
     private final InterfaceService interfaceService;
@@ -26,6 +26,11 @@ public class InterfaceController {
     @PostMapping
     public ResponseEntity<InterfaceEntity> registerInterface(@RequestBody InterfaceEntity entity) {
         return ResponseEntity.ok(interfaceService.registerInterface(entity));
+    }
+
+    @PutMapping("/{intfId}")
+    public ResponseEntity<InterfaceEntity> updateInterface(@PathVariable String intfId, @RequestBody InterfaceEntity entity) {
+        return ResponseEntity.ok(interfaceService.updateInterface(intfId, entity));
     }
 
     @PostMapping("/{intfId}/execute")

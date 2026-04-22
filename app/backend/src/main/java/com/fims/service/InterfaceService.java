@@ -57,6 +57,20 @@ public class InterfaceService {
     }
 
     @Transactional
+    public InterfaceEntity updateInterface(String intfId, InterfaceEntity updatedEntity) {
+        InterfaceEntity existing = interfaceRepository.findByIntfId(intfId)
+                .orElseThrow(() -> new RuntimeException("Interface not found: " + intfId));
+
+        existing.setIntfName(updatedEntity.getIntfName());
+        existing.setProtType(updatedEntity.getProtType());
+        existing.setEndPoint(updatedEntity.getEndPoint());
+        existing.setAuthInfo(updatedEntity.getAuthInfo());
+        existing.setStatus(updatedEntity.getStatus());
+
+        return interfaceRepository.save(existing);
+    }
+
+    @Transactional
     public Map<String, Object> executeInterface(String intfId) {
         return executeInterface(intfId, "GET", null);
     }
