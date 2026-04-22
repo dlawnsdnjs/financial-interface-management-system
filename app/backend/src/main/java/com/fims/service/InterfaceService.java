@@ -28,6 +28,9 @@ public class InterfaceService {
     private final TransactionLogRepository transactionLogRepository;
     private final RestTemplate restTemplate;
     private final SftpService sftpService;
+    private final SoapService soapService;
+    private final MqService mqService;
+    private final BatchJobService batchJobService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public List<InterfaceEntity> getAllInterfaces() {
@@ -78,6 +81,15 @@ public class InterfaceService {
                     break;
                 case "SFTP":
                     responsePayload = executeSftp(entity);
+                    break;
+                case "SOAP":
+                    responsePayload = soapService.executeSoapRequest(entity.getEndPoint(), method, body != null ? body.toString() : "");
+                    break;
+                case "MQ":
+                    responsePayload = mqService.sendMessage(entity.getEndPoint(), body != null ? body.toString() : "Ping");
+                    break;
+                case "BATCH":
+                    responsePayload = batchJobService.runBatchJob(entity.getIntfName());
                     break;
                 default:
                     responsePayload = "Processed by " + entity.getProtType() + " engine.";
@@ -175,11 +187,26 @@ public class InterfaceService {
         long success = allLogs.stream().filter(l -> "SUCCESS".equals(l.getStatus())).count();
         double successRate = total == 0 ? 0 : (double) success / total * 100;
 
+        // 프로토콜별 통계
+        Map<String, Long> protocolStats = allLogs.stream()
+                .collect(Collectors.groupingBy(TransactionLogEntity::getProtType, Collectors.counting()));
+
+        // 평균 지연 시간
+        double avgLatency = allLogs.stream()
+                .mapToLong(TransactionLogEntity::getLatencyMs)
+                .average()
+                .orElse(0.0);
+
         return Map.of(
             "successRate", Math.round(successRate * 10) / 10.0,
             "totalCount", total,
             "errorCount", total - success,
-            "recentLogs", allLogs.stream().limit(5).collect(Collectors.toList())
+            "avgLatency", Math.round(avgLatency * 10) / 10.0,
+            "protocolStats", protocolStats,
+            "recentLogs", allLogs.stream()
+                    .sorted((a, b) -> b.getId().compareTo(a.getId())) // 최근순 정렬 (ID가 생성순일 경우)
+                    .limit(10)
+                    .collect(Collectors.toList())
         );
     }
 }

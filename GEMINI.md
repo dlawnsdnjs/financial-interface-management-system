@@ -18,3 +18,8 @@ For every task, modification, or implementation step, a detailed report MUST be 
 ## 3. Communication Style
 - Always provide a concise technical summary after completing each major step.
 - Focus on architectural integrity and maintainability.
+
+## 4. Mandatory Code Review Workflow
+- **Process:** After any code modification or implementation, you MUST invoke the `code-review-commons` skill or `/code-review` command to perform a self-review of the changes.
+- **Improvement:** Any issues, suggestions, or potential bugs identified during the review phase must be addressed and rectified immediately.
+- **Finality:** A task is only considered complete once the code has passed the review process and all improvements have been implemented.

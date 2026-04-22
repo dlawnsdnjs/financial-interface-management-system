@@ -20,6 +20,15 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     
+    // SOAP 연동을 위한 의존성
+    implementation 'org.springframework.boot:spring-boot-starter-web-services'
+    
+    // MQ 연동을 위한 의존성 (ActiveMQ)
+    implementation 'org.springframework.boot:spring-boot-starter-activemq'
+    
+    // Batch 작업을 위한 의존성
+    implementation 'org.springframework.boot:spring-boot-starter-batch'
+    
     // SFTP연동을 위한 라이브러리 (Apache Commons Net & JSch)
     implementation 'commons-net:commons-net:3.10.0'
     implementation 'com.github.mwiede:jsch:0.2.17'
