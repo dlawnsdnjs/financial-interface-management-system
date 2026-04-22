@@ -36,9 +36,25 @@
     }
     ```
 
-### 2.3 인터페이스 즉시 실행 (Manual Execution)
+### 2.3 인터페이스 정보 수정
+- **Endpoint**: `PUT /interfaces/{intfId}`
+- **Body**: 인터페이스 전체 객체
+- **Response**: 수정된 인터페이스 객체
+
+### 2.4 인터페이스 즉시 실행 (Manual Execution)
 - **Endpoint**: `POST /interfaces/{intfId}/execute`
 - **Description**: 특정 인터페이스를 즉각 실행하고 결과를 반환받음.
+- **Response**:
+    ```json
+    {
+      "transId": "uuid-string",
+      "status": "SUCCESS",
+      "intfId": "INTF-001",
+      "msg": "Execution Completed",
+      "payload": "실제 수신된 데이터 또는 마스킹된 데이터",
+      "latency": "120ms"
+    }
+    ```
 
 ## 3. 모니터링 및 로그 API
 

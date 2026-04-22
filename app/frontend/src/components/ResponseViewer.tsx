@@ -54,16 +54,16 @@ const ResponseViewer: React.FC<ResponseViewerProps> = ({ data, onClose }) => {
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Server Message</label>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Response Data / Payload</label>
               <button 
-                onClick={() => copyToClipboard(data.msg)}
+                onClick={() => copyToClipboard(data.payload || data.msg)}
                 className="text-[10px] flex items-center gap-1 text-blue-600 hover:text-blue-800 font-bold"
               >
                 <Copy size={10} /> Copy Result
               </button>
             </div>
             <div className="p-4 bg-slate-900 rounded-xl text-emerald-400 font-mono text-sm h-48 overflow-y-auto shadow-inner border border-slate-800">
-              <pre className="whitespace-pre-wrap">{data.msg}</pre>
+              <pre className="whitespace-pre-wrap">{data.payload || data.msg}</pre>
             </div>
           </div>
         </div>

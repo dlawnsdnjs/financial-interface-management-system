@@ -144,6 +144,7 @@ public class InterfaceService {
             "status", status,
             "intfId", intfId,
             "msg", status.equals("SUCCESS") ? "Execution Completed" : "Execution Failed: " + responsePayload,
+            "payload", maskedResponse != null ? maskedResponse : "",
             "latency", latency + "ms",
             "retryOf", retryOf != null ? retryOf : ""
         );
