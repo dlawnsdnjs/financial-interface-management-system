@@ -24,11 +24,15 @@ public class TransactionLogEntity {
     @Column(nullable = false)
     private String transId; // UUID 등 고유 식별자
 
+    private String retryOf; // 원본 트랜잭션 ID (재처리인 경우)
+
     @Column(nullable = false)
     private String intfId;
 
     @Column(nullable = false)
     private String protType;
+
+    private String httpMethod; // GET, POST, etc.
 
     @Column(nullable = false)
     private String status; // SUCCESS, FAIL

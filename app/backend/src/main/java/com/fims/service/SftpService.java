@@ -18,7 +18,7 @@ public class SftpService {
      * @param password 비밀번호
      * @return 연결 성공 여부 메시지
      */
-    public String executeSftpTest(String host, int port, String user, String password) throws JSchException {
+    public String executeSftpTest(String host, int port, String user, String password) throws JSchException, SftpException {
         JSch jsch = new JSch();
         Session session = null;
         ChannelSftp channelSftp = null;

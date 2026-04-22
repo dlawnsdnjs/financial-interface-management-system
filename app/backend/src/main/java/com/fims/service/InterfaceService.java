@@ -63,11 +63,18 @@ public class InterfaceService {
 
     @Transactional
     public Map<String, Object> executeInterface(String intfId, String method, Object body) {
+        return executeInterface(intfId, method, body, null);
+    }
+
+    @Transactional
+    public Map<String, Object> executeInterface(String intfId, String method, Object body, String retryOf) {
         InterfaceEntity entity = interfaceRepository.findByIntfId(intfId)
                 .orElseThrow(() -> new RuntimeException("Interface not found: " + intfId));
 
         String transId = UUID.randomUUID().toString();
-        log.info("[{}] Executing Interface: {} ({}) via {} to {}", transId, entity.getIntfName(), entity.getProtType(), method, entity.getEndPoint());
+        log.info("[{}] {} Interface: {} ({}) via {} to {}", transId, 
+                retryOf != null ? "Retrying" : "Executing", 
+                entity.getIntfName(), entity.getProtType(), method, entity.getEndPoint());
 
         long startTime = System.currentTimeMillis();
         String status = "SUCCESS";
@@ -106,8 +113,10 @@ public class InterfaceService {
 
         TransactionLogEntity logEntity = TransactionLogEntity.builder()
                 .transId(transId)
+                .retryOf(retryOf)
                 .intfId(intfId)
                 .protType(entity.getProtType())
+                .httpMethod(method)
                 .status(status)
                 .resultCode(resultCode)
                 .requestPayload(body != null ? body.toString() : "N/A")
@@ -121,8 +130,24 @@ public class InterfaceService {
             "status", status,
             "intfId", intfId,
             "msg", status.equals("SUCCESS") ? "Execution Completed" : "Execution Failed: " + responsePayload,
-            "latency", latency + "ms"
+            "latency", latency + "ms",
+            "retryOf", retryOf != null ? retryOf : ""
         );
+    }
+
+    @Transactional
+    public Map<String, Object> retryTransaction(Long logId) {
+        TransactionLogEntity originalLog = transactionLogRepository.findById(logId)
+                .orElseThrow(() -> new RuntimeException("Original log not found: " + logId));
+
+        log.info("Requesting retry for Transaction ID: {} (Log ID: {})", originalLog.getTransId(), logId);
+        
+        // Re-execute with the same data and same method
+        String method = originalLog.getHttpMethod() != null ? originalLog.getHttpMethod() : 
+                        (originalLog.getRequestPayload().equals("N/A") ? "GET" : "POST");
+        Object body = originalLog.getRequestPayload().equals("N/A") ? null : originalLog.getRequestPayload();
+
+        return executeInterface(originalLog.getIntfId(), method, body, originalLog.getTransId());
     }
 
     private String executeRest(InterfaceEntity entity, String method, Object body) {
@@ -131,6 +156,8 @@ public class InterfaceService {
             if ("POST".equalsIgnoreCase(method)) {
                 return restTemplate.postForObject(entity.getEndPoint(), body, String.class);
             }
+            // For other methods like PUT, DELETE, etc., you'd extend this.
+            // For now, defaulting to GET if not POST.
             return restTemplate.getForObject(entity.getEndPoint(), String.class);
         } catch (Exception e) {
             log.warn("REST endpoint call failed: {}", e.getMessage());
@@ -140,8 +167,18 @@ public class InterfaceService {
 
     private String maskSensitiveData(String data) {
         if (data == null) return null;
-        // 계좌번호, 카드번호 패턴 마스킹 (간단 예시)
-        return data.replaceAll("(\\d{4})\\d{4,8}(\\d{4})", "$1****$2");
+        
+        String masked = data;
+        // 1. 계좌번호, 카드번호 (8자리 이상 숫자 뭉치)
+        masked = masked.replaceAll("(\\d{4})\\d{4,8}(\\d{4})", "$1****$2");
+        
+        // 2. 주민등록번호 (######-#######)
+        masked = masked.replaceAll("(\\d{6}-[1-4])\\d{6}", "$1******");
+        
+        // 3. 이메일 (a***@domain.com) - 효율적인 비전방 탐색 방식으로 변경
+        masked = masked.replaceAll("(?<=.{1})[^@]+(?=@)", "****");
+        
+        return masked;
     }
 
     private String executeSftp(InterfaceEntity entity) {

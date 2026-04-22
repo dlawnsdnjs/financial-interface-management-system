@@ -41,6 +41,11 @@ public class InterfaceController {
         return ResponseEntity.ok(interfaceService.getAllLogs());
     }
 
+    @PostMapping("/logs/{id}/retry")
+    public ResponseEntity<Map<String, Object>> retryTransaction(@PathVariable Long id) {
+        return ResponseEntity.ok(interfaceService.retryTransaction(id));
+    }
+
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> getStatistics() {
         return ResponseEntity.ok(interfaceService.getStatistics());
