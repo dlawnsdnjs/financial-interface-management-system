@@ -55,11 +55,16 @@ public class InterfaceService {
 
     @Transactional
     public Map<String, Object> executeInterface(String intfId) {
+        return executeInterface(intfId, "GET", null);
+    }
+
+    @Transactional
+    public Map<String, Object> executeInterface(String intfId, String method, Object body) {
         InterfaceEntity entity = interfaceRepository.findByIntfId(intfId)
                 .orElseThrow(() -> new RuntimeException("Interface not found: " + intfId));
 
         String transId = UUID.randomUUID().toString();
-        log.info("[{}] Executing Interface: {} ({}) to {}", transId, entity.getIntfName(), entity.getProtType(), entity.getEndPoint());
+        log.info("[{}] Executing Interface: {} ({}) via {} to {}", transId, entity.getIntfName(), entity.getProtType(), method, entity.getEndPoint());
 
         long startTime = System.currentTimeMillis();
         String status = "SUCCESS";
@@ -69,7 +74,7 @@ public class InterfaceService {
         try {
             switch (entity.getProtType().toUpperCase()) {
                 case "REST":
-                    responsePayload = executeRest(entity);
+                    responsePayload = executeRest(entity, method, body);
                     break;
                 case "SFTP":
                     responsePayload = executeSftp(entity);
@@ -85,6 +90,7 @@ public class InterfaceService {
         }
 
         long latency = System.currentTimeMillis() - startTime;
+        String maskedResponse = maskSensitiveData(responsePayload);
 
         TransactionLogEntity logEntity = TransactionLogEntity.builder()
                 .transId(transId)
@@ -92,8 +98,8 @@ public class InterfaceService {
                 .protType(entity.getProtType())
                 .status(status)
                 .resultCode(resultCode)
-                .requestPayload("N/A")
-                .responsePayload(responsePayload)
+                .requestPayload(body != null ? body.toString() : "N/A")
+                .responsePayload(maskedResponse)
                 .latencyMs(latency)
                 .build();
         transactionLogRepository.save(logEntity);
@@ -107,15 +113,23 @@ public class InterfaceService {
         );
     }
 
-    private String executeRest(InterfaceEntity entity) {
+    private String executeRest(InterfaceEntity entity, String method, Object body) {
         try {
-            log.info("Calling REST endpoint: {}", entity.getEndPoint());
-            ResponseEntity<String> response = restTemplate.getForEntity(entity.getEndPoint(), String.class);
-            return response.getBody();
+            log.info("Calling REST endpoint: {} via {}", entity.getEndPoint(), method);
+            if ("POST".equalsIgnoreCase(method)) {
+                return restTemplate.postForObject(entity.getEndPoint(), body, String.class);
+            }
+            return restTemplate.getForObject(entity.getEndPoint(), String.class);
         } catch (Exception e) {
             log.warn("REST endpoint call failed: {}", e.getMessage());
             throw new RuntimeException("REST call failed: " + e.getMessage());
         }
+    }
+
+    private String maskSensitiveData(String data) {
+        if (data == null) return null;
+        // 계좌번호, 카드번호 패턴 마스킹 (간단 예시)
+        return data.replaceAll("(\\d{4})\\d{4,8}(\\d{4})", "$1****$2");
     }
 
     private String executeSftp(InterfaceEntity entity) {

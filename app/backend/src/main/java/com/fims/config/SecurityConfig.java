@@ -17,6 +17,7 @@ public class SecurityConfig {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/v1/interfaces/**").authenticated() // API는 인증 필요
                 .anyRequest().permitAll()
             )
             .headers(headers -> headers

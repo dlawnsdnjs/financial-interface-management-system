@@ -13,7 +13,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/interfaces")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "http://localhost:3000") // 특정 오리진만 허용
 public class InterfaceController {
 
     private final InterfaceService interfaceService;
@@ -29,8 +29,11 @@ public class InterfaceController {
     }
 
     @PostMapping("/{intfId}/execute")
-    public ResponseEntity<Map<String, Object>> executeInterface(@PathVariable String intfId) {
-        return ResponseEntity.ok(interfaceService.executeInterface(intfId));
+    public ResponseEntity<Map<String, Object>> executeInterface(
+            @PathVariable String intfId,
+            @RequestParam(required = false, defaultValue = "GET") String method,
+            @RequestBody(required = false) Object body) {
+        return ResponseEntity.ok(interfaceService.executeInterface(intfId, method, body));
     }
 
     @GetMapping("/logs")

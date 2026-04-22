@@ -103,17 +103,36 @@ const App = () => {
     }
   };
 
+  const [execConfigs, setExecConfigs] = useState({}); // { intfId: { method: 'GET', body: '' } }
+
   const handleExecute = async (intfId) => {
     setExecuting(intfId);
     setLastResult(null);
+    
+    const config = execConfigs[intfId] || { method: 'GET', body: '' };
+    
     try {
-      const res = await axios.post(`${API_BASE}/interfaces/${intfId}/execute`);
+      const res = await axios.post(`${API_BASE}/interfaces/${intfId}/execute`, 
+        config.body ? JSON.parse(config.body) : null,
+        { params: { method: config.method } }
+      );
       setLastResult(res.data);
-      fetchData(); // Refresh stats and logs
+      fetchData();
     } catch (err) {
-      setLastResult({ status: 'FAIL', msg: '백엔드 서버 연결 오류', intfId });
+      setLastResult({ 
+        status: 'FAIL', 
+        msg: err.response?.data?.message || '연결 오류 또는 페이로드 형식 오류', 
+        intfId 
+      });
     }
     setExecuting(null);
+  };
+
+  const updateExecConfig = (intfId, field, value) => {
+    setExecConfigs(prev => ({
+      ...prev,
+      [intfId]: { ...(prev[intfId] || { method: 'GET', body: '' }), [field]: value }
+    }));
   };
 
   return (
@@ -228,14 +247,35 @@ const App = () => {
                             </div>
                           </td>
                           <td className="p-4">
-                            <button 
-                              disabled={executing === intf.intfId}
-                              onClick={() => handleExecute(intf.intfId)}
-                              className="flex items-center gap-2 text-sm font-extrabold px-3 py-1.5 rounded-lg border bg-white text-blue-600 border-blue-200 hover:bg-blue-50 transition"
-                            >
-                              {executing === intf.intfId ? <RefreshCcw size={14} className="animate-spin" /> : <Play size={14} />}
-                              실행
-                            </button>
+                            <div className="flex flex-col gap-2">
+                              <div className="flex gap-1">
+                                <select 
+                                  value={execConfigs[intf.intfId]?.method || 'GET'}
+                                  onChange={(e) => updateExecConfig(intf.intfId, 'method', e.target.value)}
+                                  className="text-xs border rounded p-1 bg-white"
+                                >
+                                  <option value="GET">GET</option>
+                                  <option value="POST">POST</option>
+                                </select>
+                                <button 
+                                  disabled={executing === intf.intfId}
+                                  onClick={() => handleExecute(intf.intfId)}
+                                  className="flex items-center gap-2 text-xs font-extrabold px-3 py-1 rounded-lg border bg-blue-600 text-white border-blue-600 hover:bg-blue-700 transition"
+                                >
+                                  {executing === intf.intfId ? <RefreshCcw size={12} className="animate-spin" /> : <Play size={12} />}
+                                  실행
+                                </button>
+                              </div>
+                              {execConfigs[intf.intfId]?.method === 'POST' && (
+                                <input 
+                                  type="text"
+                                  placeholder='JSON Payload'
+                                  value={execConfigs[intf.intfId]?.body || ''}
+                                  onChange={(e) => updateExecConfig(intf.intfId, 'body', e.target.value)}
+                                  className="text-[10px] border rounded p-1 w-full"
+                                />
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
