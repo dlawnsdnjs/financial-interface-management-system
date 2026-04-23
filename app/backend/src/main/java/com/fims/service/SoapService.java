@@ -14,10 +14,9 @@ import java.util.Map;
 @Service
 @Slf4j
 public class SoapService implements ProtocolHandler {
-
+    
     private final RestTemplate restTemplate = new RestTemplate();
-
-    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+    private static final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
 
     @Override
     public boolean supports(String protocolType) {
@@ -28,20 +27,20 @@ public class SoapService implements ProtocolHandler {
     public String execute(com.fims.model.InterfaceEntity interfaceEntity, Object body, Map<String, String> parameters) {
         try {
             com.fasterxml.jackson.databind.JsonNode config = objectMapper.readTree(interfaceEntity.getProtocolConfig().getConfigData());
-            String wsdlUrl = config.get("wsdlUrl").asText();
-            String operationName = config.get("operationName").asText();
+            String wsdlUrl = config.path("wsdlUrl").asText();
+            String operationName = config.path("operationName").asText();
 
             log.info("Executing SOAP call to: {} with operation: {}", wsdlUrl, operationName);
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.valueOf("text/xml;charset=UTF-8"));
             headers.add("SOAPAction", operationName);
 
-            HttpEntity<String> request = new HttpEntity<>(body != null ? body.toString() : "", headers);
+            HttpEntity<String> request = new HttpEntity<>(body != null ? body.toString() : "", headers);       
             return restTemplate.postForObject(wsdlUrl, request, String.class);
         } catch (Exception e) {
             log.error("SOAP execution failed: {}", e.getMessage());
-            throw new RuntimeException("SOAP 호출 오류: " + e.getMessage());
+            throw new RuntimeException("SOAP execution failed");
         }
     }
 

@@ -45,6 +45,11 @@ public class InterfaceEntity {
     @Column(nullable = false)
     private String status; // ACTIVE, INACTIVE
 
+    private String endPoint;
+    private String httpMethod;
+    private String operationName;
+    private String authInfo;
+
     @CreatedDate
     private LocalDateTime createdAt;
 
