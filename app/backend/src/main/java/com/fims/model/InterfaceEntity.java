@@ -38,6 +38,8 @@ public class InterfaceEntity {
 
     private String httpMethod; // GET, POST, PUT, DELETE, etc.
 
+    private String operationName; // SOAP 인터페이스의 오퍼레이션 명
+
     @Column(columnDefinition = "TEXT")
     private String authInfo; // 인증 정보
 

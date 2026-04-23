@@ -19,14 +19,14 @@ const InterfaceForm: React.FC<InterfaceFormProps> = ({ initialData, onSubmit, on
     status: 'ACTIVE'
   });
 
-  const [operations, setOperations] = useState<string[]>([]);
+  const [operations, setOperations] = useState<{name: string, parameters: string[]}[]>([]);
   const [fetchingOps, setFetchingOps] = useState(false);
 
   const fetchOperations = async (wsdlUrl: string) => {
     if (!wsdlUrl) return;
     setFetchingOps(true);
     try {
-      const response = await fetch(`/api/interfaces/soap/operations?wsdlUrl=${encodeURIComponent(wsdlUrl)}`);
+      const response = await fetch(`/api/v1/interfaces/soap/operations?wsdlUrl=${encodeURIComponent(wsdlUrl)}`);
       if (response.ok) {
         const data = await response.json();
         setOperations(data);
@@ -36,6 +36,14 @@ const InterfaceForm: React.FC<InterfaceFormProps> = ({ initialData, onSubmit, on
     } finally {
       setFetchingOps(false);
     }
+  };
+
+  const handleOperationChange = (opName: string) => {
+    setFormData({
+      ...formData,
+      operationName: opName,
+      parameters: []
+    });
   };
 
   useEffect(() => {
@@ -126,15 +134,14 @@ const InterfaceForm: React.FC<InterfaceFormProps> = ({ initialData, onSubmit, on
           </div>
           {formData.protType === 'SOAP' && (
             <div className="flex flex-col gap-2 animate-in slide-in-from-top-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">SOAP Operation</label>
-              <select 
+              <label className="text-xs font-bold text-slate-500 uppercase">SOAP Operation Name</label>
+              <input 
+                type="text" 
+                placeholder="e.g., GetNumberConversion"
                 className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm"
                 value={formData.operationName || ''}
                 onChange={e => setFormData({...formData, operationName: e.target.value})}
-              >
-                <option value="">{fetchingOps ? 'Loading...' : 'Select Operation'}</option>
-                {operations.map(op => <option key={op} value={op}>{op}</option>)}
-              </select>
+              />
             </div>
           )}
           <div className="flex flex-col gap-2">
@@ -154,7 +161,7 @@ const InterfaceForm: React.FC<InterfaceFormProps> = ({ initialData, onSubmit, on
               <ExternalLink className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <input 
                 type="text" 
-                placeholder="https://api.provider.com/v1"
+                placeholder="https://api.provider.com/service"
                 className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                 required
                 value={formData.endPoint}

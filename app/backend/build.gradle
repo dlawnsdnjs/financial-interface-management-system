@@ -25,6 +25,11 @@ dependencies {
     implementation 'org.apache.cxf:cxf-rt-frontend-jaxws:4.0.3'
     implementation 'org.apache.cxf:cxf-rt-transports-http:4.0.3'
     
+    // JAXB 런타임 (Jakarta EE 10 호환)
+    implementation 'org.glassfish.jaxb:jaxb-runtime:4.0.4'
+    implementation 'com.sun.xml.bind:jaxb-xjc:4.0.4'
+    implementation 'jakarta.xml.bind:jakarta.xml.bind-api:4.0.1'
+    
     // MQ 연동을 위한 의존성 (ActiveMQ)
     implementation 'org.springframework.boot:spring-boot-starter-activemq'
     
@@ -46,6 +51,10 @@ dependencies {
     
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
 }
 
 tasks.named('test') {

@@ -1,10 +1,13 @@
 package com.fims.service;
 
+import com.fims.dto.SoapOperationDto;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.cxf.endpoint.Client;
 import org.apache.cxf.jaxws.endpoint.dynamic.JaxWsDynamicClientFactory;
+import org.apache.cxf.service.model.MessagePartInfo;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -15,15 +18,11 @@ public class SoapService implements ProtocolHandler {
 
     @Override
     public String execute(String endpoint, String method, Object body, Map<String, String> parameters) {
-        // endpoint는 WSDL URL로 사용
-        // method는 Operation 이름으로 사용
-        // parameters는 인자로 전달
-        
+        // ...
         try {
             JaxWsDynamicClientFactory dcf = JaxWsDynamicClientFactory.newInstance();
             Client client = dcf.createClient(endpoint);
             
-            // 파라미터가 없으면 빈 배열로 호출
             Object[] result = client.invoke(method, body != null ? body : "");
             
             return "SOAP Dynamic Call Successful: " + (result.length > 0 ? result[0].toString() : "No return");
@@ -38,11 +37,34 @@ public class SoapService implements ProtocolHandler {
         return "SOAP";
     }
 
-    public List<String> getOperations(String wsdlUrl) {
-        JaxWsDynamicClientFactory dcf = JaxWsDynamicClientFactory.newInstance();
-        Client client = dcf.createClient(wsdlUrl);
-        return client.getEndpoint().getBinding().getBindingInfo().getOperations().stream()
-                .map(op -> op.getName().getLocalPart())
-                .collect(Collectors.toList());
+    public List<SoapOperationDto> getOperations(String wsdlUrl) {
+        log.info("Fetching SOAP operations for WSDL URL: {}", wsdlUrl);
+        try {
+            JaxWsDynamicClientFactory dcf = JaxWsDynamicClientFactory.newInstance();
+            Client client = dcf.createClient(wsdlUrl);
+            
+            return client.getEndpoint().getBinding().getBindingInfo().getOperations().stream()
+                    .map(op -> {
+                        List<String> params = new ArrayList<>();
+                        if (op.getInput() != null) {
+                            org.apache.cxf.service.model.BindingMessageInfo input = op.getInput();
+                            for (MessagePartInfo part : input.getMessageParts()) {
+                                // 파라미터 이름 추출 (part의 이름을 우선 사용)
+                                String name = part.getName().getLocalPart();
+                                // 'parameters' 래퍼인 경우, 실제 Element QName이 있다면 그걸 우선 시도
+                                if ("parameters".equals(name) && part.getElementQName() != null) {
+                                    params.add(part.getElementQName().getLocalPart());
+                                } else {
+                                    params.add(name);
+                                }
+                            }
+                        }
+                        return new SoapOperationDto(op.getName().getLocalPart(), params);
+                    })
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("Failed to fetch operations for WSDL URL: {}. Error: {}", wsdlUrl, e.getMessage(), e);
+            throw new RuntimeException("WSDL 파싱 실패: " + e.getMessage());
+        }
     }
 }
