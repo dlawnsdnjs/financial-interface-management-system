@@ -5,7 +5,9 @@ import org.apache.cxf.endpoint.Client;
 import org.apache.cxf.jaxws.endpoint.dynamic.JaxWsDynamicClientFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -34,5 +36,13 @@ public class SoapService implements ProtocolHandler {
     @Override
     public String getProtocolType() {
         return "SOAP";
+    }
+
+    public List<String> getOperations(String wsdlUrl) {
+        JaxWsDynamicClientFactory dcf = JaxWsDynamicClientFactory.newInstance();
+        Client client = dcf.createClient(wsdlUrl);
+        return client.getEndpoint().getBinding().getBindingInfo().getOperations().stream()
+                .map(op -> op.getName().getLocalPart())
+                .collect(Collectors.toList());
     }
 }

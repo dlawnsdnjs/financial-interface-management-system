@@ -99,16 +99,42 @@ const InterfaceForm: React.FC<InterfaceFormProps> = ({ initialData, onSubmit, on
               </select>
             </div>
           </div>
+  const [operations, setOperations] = useState<string[]>([]);
+  const [fetchingOps, setFetchingOps] = useState(false);
+
+  const fetchOperations = async (wsdlUrl: string) => {
+    if (!wsdlUrl) return;
+    setFetchingOps(true);
+    try {
+      const response = await fetch(`/api/interfaces/soap/operations?wsdlUrl=${encodeURIComponent(wsdlUrl)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setOperations(data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setFetchingOps(false);
+    }
+  };
+
+  useEffect(() => {
+    if (formData.protType === 'SOAP' && formData.endPoint) {
+      fetchOperations(formData.endPoint);
+    }
+  }, [formData.protType, formData.endPoint]);
+...
           {formData.protType === 'SOAP' && (
             <div className="flex flex-col gap-2 animate-in slide-in-from-top-1">
               <label className="text-xs font-bold text-slate-500 uppercase">SOAP Operation</label>
-              <input 
-                type="text" 
-                placeholder="e.g., GetUserInfo"
-                className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+              <select 
+                className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm"
                 value={formData.operationName || ''}
                 onChange={e => setFormData({...formData, operationName: e.target.value})}
-              />
+              >
+                <option value="">{fetchingOps ? 'Loading...' : 'Select Operation'}</option>
+                {operations.map(op => <option key={op} value={op}>{op}</option>)}
+              </select>
             </div>
           )}
           <div className="flex flex-col gap-2">
