@@ -3,14 +3,23 @@ package com.fims.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class SoapService {
+public class SoapService implements ProtocolHandler {
 
-    private final RestTemplate restTemplate;
+    @Override
+    public String execute(String endpoint, String method, Object body, Map<String, String> parameters) {
+        return executeSoapRequest(endpoint, method, body != null ? body.toString() : "");
+    }
+
+    @Override
+    public String getProtocolType() {
+        return "SOAP";
+    }
 
     public String executeSoapRequest(String endpoint, String action, String payload) {
         log.info("Executing SOAP Request to: {} with Action: {}", endpoint, action);

@@ -54,4 +54,10 @@ public class InterfaceEntity {
 
     @LastModifiedDate
     private LocalDateTime updatedAt;
+    public void setParameters(List<InterfaceParameter> parameters) {
+        this.parameters = parameters;
+        if (parameters != null) {
+            parameters.forEach(p -> p.setInterfaceEntity(this));
+        }
+    }
 }

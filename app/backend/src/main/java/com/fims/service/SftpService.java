@@ -4,11 +4,31 @@ import com.jcraft.jsch.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
 import java.util.Properties;
 
 @Service
 @Slf4j
-public class SftpService {
+public class SftpService implements ProtocolHandler {
+
+    @Override
+    public String execute(String endpoint, String method, Object body, Map<String, String> parameters) {
+        String host = endpoint.contains(":") ? endpoint.split(":")[0] : endpoint;
+        int port = endpoint.contains(":") ? Integer.parseInt(endpoint.split(":")[1]) : 22;
+        String user = parameters.getOrDefault("user", "anonymous");
+        String password = parameters.getOrDefault("password", "");
+
+        try {
+            return executeSftpTest(host, port, user, password);
+        } catch (Exception e) {
+            throw new RuntimeException("SFTP 연동 오류: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public String getProtocolType() {
+        return "SFTP";
+    }
 
     /**
      * SFTP 서버 접속 및 연결 테스트
