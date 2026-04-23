@@ -11,6 +11,7 @@ export interface Interface {
   endPoint: string;
   parameters: Parameter[];
   status: string;
+  operationName?: string;
 }
 
 export interface TransactionLog {

@@ -99,6 +99,18 @@ const InterfaceForm: React.FC<InterfaceFormProps> = ({ initialData, onSubmit, on
               </select>
             </div>
           </div>
+          {formData.protType === 'SOAP' && (
+            <div className="flex flex-col gap-2 animate-in slide-in-from-top-1">
+              <label className="text-xs font-bold text-slate-500 uppercase">SOAP Operation</label>
+              <input 
+                type="text" 
+                placeholder="e.g., GetUserInfo"
+                className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                value={formData.operationName || ''}
+                onChange={e => setFormData({...formData, operationName: e.target.value})}
+              />
+            </div>
+          )}
           <div className="flex flex-col gap-2">
             <label className="text-xs font-bold text-slate-500 uppercase">Interface Name</label>
             <input 
