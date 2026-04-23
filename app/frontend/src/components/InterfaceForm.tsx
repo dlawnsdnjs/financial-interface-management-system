@@ -46,12 +46,6 @@ const InterfaceForm: React.FC<InterfaceFormProps> = ({ initialData, onSubmit, on
     });
   };
 
-  useEffect(() => {
-    if (formData.protType === 'SOAP' && formData.endPoint) {
-      fetchOperations(formData.endPoint);
-    }
-  }, [formData.protType, formData.endPoint]);
-
   const addParameter = () => {
     setFormData({ ...formData, parameters: [...formData.parameters, { key: '', value: '' }] });
   };

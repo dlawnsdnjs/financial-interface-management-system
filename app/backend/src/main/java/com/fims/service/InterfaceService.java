@@ -60,6 +60,7 @@ public class InterfaceService {
         existing.setProtType(updatedEntity.getProtType());
         existing.setEndPoint(updatedEntity.getEndPoint());
         existing.setHttpMethod(updatedEntity.getHttpMethod());
+        existing.setOperationName(updatedEntity.getOperationName());
         existing.setAuthInfo(updatedEntity.getAuthInfo());
         existing.setStatus(updatedEntity.getStatus());
         
@@ -93,23 +94,23 @@ public class InterfaceService {
                 .orElseThrow(() -> new RuntimeException("Interface not found: " + intfId));
 
         String transId = UUID.randomUUID().toString();
-        log.info("[{}] {} Interface: {} ({}) via {} to {}", transId, 
+        log.info("[{}] {} Interface: {} ({})", transId, 
                 retryOf != null ? "Retrying" : "Executing", 
-                entity.getIntfName(), entity.getProtType(), method, entity.getEndPoint());
+                entity.getIntfName(), entity.getProtType());
 
         long startTime = System.currentTimeMillis();
         String status = "SUCCESS";
         String resultCode = "200";
         String responsePayload = "";
         
-        Object finalBody = body != null ? body : entity.getAuthInfo();
+        Object finalBody = body; // Simplified body handling
         
         try {
             if ("BATCH".equals(entity.getProtType().toUpperCase())) {
                 responsePayload = batchJobService.runBatchJob(entity.getIntfName());
             } else {
                 ProtocolHandler handler = protocolHandlers.stream()
-                        .filter(h -> h.getProtocolType().equalsIgnoreCase(entity.getProtType()))
+                        .filter(h -> h.supports(entity.getProtType()))
                         .findFirst()
                         .orElseThrow(() -> new RuntimeException("Unsupported protocol: " + entity.getProtType()));
 
@@ -118,12 +119,7 @@ public class InterfaceService {
                     entity.getParameters().forEach(p -> paramMap.put(p.getKey(), p.getValue()));
                 }
                 
-                // Add authInfo to params for protocols that need it (SFTP)
-                if (entity.getAuthInfo() != null && "SFTP".equalsIgnoreCase(entity.getProtType())) {
-                    paramMap.put("authInfo", entity.getAuthInfo());
-                }
-
-                responsePayload = handler.execute(entity.getEndPoint(), method, finalBody, paramMap);
+                responsePayload = handler.execute(entity, finalBody, paramMap);
             }
         } catch (Exception e) {
             log.error("[{}] Execution failed: {}", transId, e.getMessage());

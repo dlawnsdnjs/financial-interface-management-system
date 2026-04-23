@@ -17,28 +17,15 @@ public class RestService implements ProtocolHandler {
 
     private final RestTemplate restTemplate;
 
-    @Override
-    public String execute(String endpoint, String method, Object body, Map<String, String> parameters) {
-        String queryString = parameters.entrySet().stream()
-                .map(e -> URLEncoder.encode(e.getKey(), StandardCharsets.UTF_8) + "=" +
-                          URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8))
-                .collect(Collectors.joining("&"));
-
-        String url = endpoint;
-        if (!queryString.isEmpty()) {
-            url += (url.contains("?") ? "&" : "?") + queryString;
-        }
-
-        log.info("Calling REST endpoint: {} via {}", url, method);
-
-        if ("POST".equalsIgnoreCase(method)) {
-            return restTemplate.postForObject(endpoint, body, String.class);
-        }
-        return restTemplate.getForObject(url, String.class);
+@Override
+    public boolean supports(String protocolType) {
+        return "REST".equalsIgnoreCase(protocolType);
     }
 
     @Override
-    public String getProtocolType() {
-        return "REST";
+    public String execute(InterfaceEntity interfaceEntity, Object body, Map<String, String> parameters) {
+        // TODO: Implement JSON config parsing
+        log.info("Executing REST call for: {}", interfaceEntity.getIntfName());
+        return "REST execution needs implementation with new config";
     }
 }

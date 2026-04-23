@@ -16,23 +16,15 @@ public class MqService implements ProtocolHandler {
     private final JmsTemplate jmsTemplate;
 
     @Override
-    public String execute(String endpoint, String method, Object body, Map<String, String> parameters) {
-        String jsonPayload;
-        if (parameters != null && !parameters.isEmpty()) {
-            // 파라미터를 JSON 객체의 필드로 변환
-            String paramsJson = parameters.entrySet().stream()
-                    .map(e -> String.format("\"%s\":\"%s\"", e.getKey(), e.getValue()))
-                    .collect(Collectors.joining(","));
-            jsonPayload = String.format("{\"params\":{%s}, \"body\":\"%s\"}", paramsJson, body != null ? body.toString() : "");
-        } else {
-            jsonPayload = String.format("{\"body\":\"%s\"}", body != null ? body.toString() : "Ping");
-        }
-        return sendMessage(endpoint, jsonPayload);
+    public boolean supports(String protocolType) {
+        return "MQ".equalsIgnoreCase(protocolType);
     }
 
     @Override
-    public String getProtocolType() {
-        return "MQ";
+    public String execute(com.fims.model.InterfaceEntity interfaceEntity, Object body, Map<String, String> parameters) {
+        // TODO: Implement MQ execution with protocolConfig
+        log.info("Executing MQ for: {}", interfaceEntity.getIntfName());
+        return "MQ execution needs implementation with new config";
     }
 
     public String sendMessage(String queueName, String message) {

@@ -34,14 +34,8 @@ public class InterfaceEntity {
     @Column(nullable = false)
     private String protType; // REST, SOAP, MQ, BATCH, SFTP
 
-    private String endPoint;
-
-    private String httpMethod; // GET, POST, PUT, DELETE, etc.
-
-    private String operationName; // SOAP 인터페이스의 오퍼레이션 명
-
-    @Column(columnDefinition = "TEXT")
-    private String authInfo; // 인증 정보
+    @OneToOne(mappedBy = "interfaceEntity", cascade = CascadeType.ALL, orphanRemoval = true)
+    private ProtocolConfig protocolConfig;
 
     @OneToMany(mappedBy = "interfaceEntity", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference

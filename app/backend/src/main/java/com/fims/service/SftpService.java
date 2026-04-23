@@ -12,28 +12,15 @@ import java.util.Properties;
 public class SftpService implements ProtocolHandler {
 
     @Override
-    public String execute(String endpoint, String method, Object body, Map<String, String> parameters) {
-        // 엔드포인트에 파라미터를 동적으로 추가/활용 (예: 경로 수정)
-        String targetPath = endpoint;
-        if (parameters != null && parameters.containsKey("path")) {
-            targetPath = endpoint + "/" + parameters.get("path");
-        }
-        
-        String host = targetPath.contains(":") ? targetPath.split(":")[0] : targetPath;
-        int port = targetPath.contains(":") ? Integer.parseInt(targetPath.split(":")[1]) : 22;
-        String user = parameters.getOrDefault("user", "anonymous");
-        String password = parameters.getOrDefault("password", "");
-
-        try {
-            return executeSftpTest(host, port, user, password);
-        } catch (Exception e) {
-            throw new RuntimeException("SFTP 연동 오류: " + e.getMessage());
-        }
+    public boolean supports(String protocolType) {
+        return "SFTP".equalsIgnoreCase(protocolType);
     }
 
     @Override
-    public String getProtocolType() {
-        return "SFTP";
+    public String execute(com.fims.model.InterfaceEntity interfaceEntity, Object body, Map<String, String> parameters) {
+        // TODO: Implement SFTP execution with protocolConfig
+        log.info("Executing SFTP for: {}", interfaceEntity.getIntfName());
+        return "SFTP execution needs implementation with new config";
     }
 
     /**
