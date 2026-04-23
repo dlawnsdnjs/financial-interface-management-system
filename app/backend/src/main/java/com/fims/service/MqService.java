@@ -15,6 +15,8 @@ public class MqService implements ProtocolHandler {
 
     private final JmsTemplate jmsTemplate;
 
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+
     @Override
     public boolean supports(String protocolType) {
         return "MQ".equalsIgnoreCase(protocolType);
@@ -22,9 +24,16 @@ public class MqService implements ProtocolHandler {
 
     @Override
     public String execute(com.fims.model.InterfaceEntity interfaceEntity, Object body, Map<String, String> parameters) {
-        // TODO: Implement MQ execution with protocolConfig
-        log.info("Executing MQ for: {}", interfaceEntity.getIntfName());
-        return "MQ execution needs implementation with new config";
+        try {
+            com.fasterxml.jackson.databind.JsonNode config = objectMapper.readTree(interfaceEntity.getProtocolConfig().getConfigData());
+            String queueName = config.get("queueName").asText();
+            
+            log.info("Executing MQ send to: {} for: {}", queueName, interfaceEntity.getIntfName());
+            return sendMessage(queueName, body != null ? body.toString() : "{}");
+        } catch (Exception e) {
+            log.error("MQ execution failed: {}", e.getMessage());
+            throw new RuntimeException("MQ 호출 오류: " + e.getMessage());
+        }
     }
 
     public String sendMessage(String queueName, String message) {

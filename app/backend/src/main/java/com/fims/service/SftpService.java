@@ -11,6 +11,8 @@ import java.util.Properties;
 @Slf4j
 public class SftpService implements ProtocolHandler {
 
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+
     @Override
     public boolean supports(String protocolType) {
         return "SFTP".equalsIgnoreCase(protocolType);
@@ -18,9 +20,22 @@ public class SftpService implements ProtocolHandler {
 
     @Override
     public String execute(com.fims.model.InterfaceEntity interfaceEntity, Object body, Map<String, String> parameters) {
-        // TODO: Implement SFTP execution with protocolConfig
-        log.info("Executing SFTP for: {}", interfaceEntity.getIntfName());
-        return "SFTP execution needs implementation with new config";
+        try {
+            com.fasterxml.jackson.databind.JsonNode config = objectMapper.readTree(interfaceEntity.getProtocolConfig().getConfigData());
+            String hostInfo = config.get("host").asText();
+            String[] hostParts = hostInfo.split(":");
+            String host = hostParts[0];
+            int port = hostParts.length > 1 ? Integer.parseInt(hostParts[1]) : 22;
+            
+            String user = config.get("user").asText();
+            String password = config.get("password").asText();
+            
+            log.info("Executing SFTP test for: {}", interfaceEntity.getIntfName());
+            return executeSftpTest(host, port, user, password);
+        } catch (Exception e) {
+            log.error("SFTP execution failed: {}", e.getMessage());
+            throw new RuntimeException("SFTP 호출 오류: " + e.getMessage());
+        }
     }
 
     /**
