@@ -16,7 +16,12 @@ public class MqService implements ProtocolHandler {
 
     @Override
     public String execute(String endpoint, String method, Object body, Map<String, String> parameters) {
-        return sendMessage(endpoint, body != null ? body.toString() : "Ping");
+        String message = body != null ? body.toString() : "Ping";
+        // 파라미터를 메시지에 동적으로 반영
+        if (parameters != null && !parameters.isEmpty()) {
+            message += " | Params: " + parameters.toString();
+        }
+        return sendMessage(endpoint, message);
     }
 
     @Override
@@ -28,10 +33,11 @@ public class MqService implements ProtocolHandler {
         log.info("Sending MQ Message to Queue: {}", queueName);
         try {
             jmsTemplate.convertAndSend(queueName, message);
-            return "Message successfully sent to " + queueName;
+            return String.format("{\"status\":\"SUCCESS\", \"queue\":\"%s\", \"message\":\"%s\", \"timestamp\":\"%s\"}", 
+                                 queueName, message, java.time.LocalDateTime.now());
         } catch (Exception e) {
             log.error("MQ send failed: {}", e.getMessage());
-            return "MQ Simulation: Message queued internally (Offline Mode)";
+            return String.format("{\"status\":\"FAIL\", \"error\":\"%s\"}", e.getMessage());
         }
     }
 }

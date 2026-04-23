@@ -13,8 +13,14 @@ public class SftpService implements ProtocolHandler {
 
     @Override
     public String execute(String endpoint, String method, Object body, Map<String, String> parameters) {
-        String host = endpoint.contains(":") ? endpoint.split(":")[0] : endpoint;
-        int port = endpoint.contains(":") ? Integer.parseInt(endpoint.split(":")[1]) : 22;
+        // 엔드포인트에 파라미터를 동적으로 추가/활용 (예: 경로 수정)
+        String targetPath = endpoint;
+        if (parameters != null && parameters.containsKey("path")) {
+            targetPath = endpoint + "/" + parameters.get("path");
+        }
+        
+        String host = targetPath.contains(":") ? targetPath.split(":")[0] : targetPath;
+        int port = targetPath.contains(":") ? Integer.parseInt(targetPath.split(":")[1]) : 22;
         String user = parameters.getOrDefault("user", "anonymous");
         String password = parameters.getOrDefault("password", "");
 
@@ -65,7 +71,8 @@ public class SftpService implements ProtocolHandler {
             
             log.info("SFTP Connected! Server Version: {}, Remote PWD: {}", serverVersion, pwd);
             
-            return "Connected to " + host + ". Remote Path: " + pwd;
+            return String.format("{\"status\":\"SUCCESS\", \"host\":\"%s\", \"version\":\"%s\", \"remotePath\":\"%s\"}", 
+                                 host, serverVersion, pwd);
 
         } finally {
             if (channelSftp != null && channelSftp.isConnected()) {
