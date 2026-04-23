@@ -19,31 +19,51 @@ const InterfaceForm: React.FC<InterfaceFormProps> = ({ initialData, onSubmit, on
     status: 'ACTIVE'
   });
 
-  const [operations, setOperations] = useState<{name: string, parameters: string[]}[]>([]);
-  const [fetchingOps, setFetchingOps] = useState(false);
+  const [protocolConfig, setProtocolConfig] = useState<any>({});
 
-  const fetchOperations = async (wsdlUrl: string) => {
-    if (!wsdlUrl) return;
-    setFetchingOps(true);
-    try {
-      const response = await fetch(`/api/v1/interfaces/soap/operations?wsdlUrl=${encodeURIComponent(wsdlUrl)}`);
-      if (response.ok) {
-        const data = await response.json();
-        setOperations(data);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setFetchingOps(false);
+  // 프로토콜 변경 시 설정 초기화 및 동적 렌더링을 위한 설정
+  const renderProtocolFields = () => {
+    switch (formData.protType) {
+      case 'REST':
+        return (
+          <>
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold text-slate-500 uppercase">Base URL / Path</label>
+              <input type="text" className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm" 
+                     value={protocolConfig.baseUrl || ''} 
+                     onChange={e => setProtocolConfig({...protocolConfig, baseUrl: e.target.value})} />
+            </div>
+          </>
+        );
+      case 'SOAP':
+        return (
+          <>
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold text-slate-500 uppercase">WSDL URL</label>
+              <input type="text" className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm" 
+                     value={protocolConfig.wsdlUrl || ''} 
+                     onChange={e => setProtocolConfig({...protocolConfig, wsdlUrl: e.target.value})} />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold text-slate-500 uppercase">Operation Name</label>
+              <input type="text" className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm" 
+                     value={protocolConfig.operationName || ''} 
+                     onChange={e => setProtocolConfig({...protocolConfig, operationName: e.target.value})} />
+            </div>
+          </>
+        );
+      case 'SFTP':
+        return (
+            <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold text-slate-500 uppercase">Host:Port</label>
+                <input type="text" className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm"
+                    value={protocolConfig.host || ''}
+                    onChange={e => setProtocolConfig({...protocolConfig, host: e.target.value})} />
+            </div>
+        );
+      default:
+        return null;
     }
-  };
-
-  const handleOperationChange = (opName: string) => {
-    setFormData({
-      ...formData,
-      operationName: opName,
-      parameters: []
-    });
   };
 
   const addParameter = () => {
@@ -126,18 +146,7 @@ const InterfaceForm: React.FC<InterfaceFormProps> = ({ initialData, onSubmit, on
               </select>
             </div>
           </div>
-          {formData.protType === 'SOAP' && (
-            <div className="flex flex-col gap-2 animate-in slide-in-from-top-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">SOAP Operation Name</label>
-              <input 
-                type="text" 
-                placeholder="e.g., GetNumberConversion"
-                className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm"
-                value={formData.operationName || ''}
-                onChange={e => setFormData({...formData, operationName: e.target.value})}
-              />
-            </div>
-          )}
+          {renderProtocolFields()}
           <div className="flex flex-col gap-2">
             <label className="text-xs font-bold text-slate-500 uppercase">Interface Name</label>
             <input 
