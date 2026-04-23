@@ -19,6 +19,31 @@ const InterfaceForm: React.FC<InterfaceFormProps> = ({ initialData, onSubmit, on
     status: 'ACTIVE'
   });
 
+  const [operations, setOperations] = useState<string[]>([]);
+  const [fetchingOps, setFetchingOps] = useState(false);
+
+  const fetchOperations = async (wsdlUrl: string) => {
+    if (!wsdlUrl) return;
+    setFetchingOps(true);
+    try {
+      const response = await fetch(`/api/interfaces/soap/operations?wsdlUrl=${encodeURIComponent(wsdlUrl)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setOperations(data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setFetchingOps(false);
+    }
+  };
+
+  useEffect(() => {
+    if (formData.protType === 'SOAP' && formData.endPoint) {
+      fetchOperations(formData.endPoint);
+    }
+  }, [formData.protType, formData.endPoint]);
+
   const addParameter = () => {
     setFormData({ ...formData, parameters: [...formData.parameters, { key: '', value: '' }] });
   };
@@ -99,31 +124,6 @@ const InterfaceForm: React.FC<InterfaceFormProps> = ({ initialData, onSubmit, on
               </select>
             </div>
           </div>
-  const [operations, setOperations] = useState<string[]>([]);
-  const [fetchingOps, setFetchingOps] = useState(false);
-
-  const fetchOperations = async (wsdlUrl: string) => {
-    if (!wsdlUrl) return;
-    setFetchingOps(true);
-    try {
-      const response = await fetch(`/api/interfaces/soap/operations?wsdlUrl=${encodeURIComponent(wsdlUrl)}`);
-      if (response.ok) {
-        const data = await response.json();
-        setOperations(data);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setFetchingOps(false);
-    }
-  };
-
-  useEffect(() => {
-    if (formData.protType === 'SOAP' && formData.endPoint) {
-      fetchOperations(formData.endPoint);
-    }
-  }, [formData.protType, formData.endPoint]);
-...
           {formData.protType === 'SOAP' && (
             <div className="flex flex-col gap-2 animate-in slide-in-from-top-1">
               <label className="text-xs font-bold text-slate-500 uppercase">SOAP Operation</label>
