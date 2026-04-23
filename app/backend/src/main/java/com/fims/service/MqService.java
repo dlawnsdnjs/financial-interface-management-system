@@ -16,12 +16,17 @@ public class MqService implements ProtocolHandler {
 
     @Override
     public String execute(String endpoint, String method, Object body, Map<String, String> parameters) {
-        String message = body != null ? body.toString() : "Ping";
-        // 파라미터를 메시지에 동적으로 반영
+        String jsonPayload;
         if (parameters != null && !parameters.isEmpty()) {
-            message += " | Params: " + parameters.toString();
+            // 파라미터를 JSON 객체의 필드로 변환
+            String paramsJson = parameters.entrySet().stream()
+                    .map(e -> String.format("\"%s\":\"%s\"", e.getKey(), e.getValue()))
+                    .collect(Collectors.joining(","));
+            jsonPayload = String.format("{\"params\":{%s}, \"body\":\"%s\"}", paramsJson, body != null ? body.toString() : "");
+        } else {
+            jsonPayload = String.format("{\"body\":\"%s\"}", body != null ? body.toString() : "Ping");
         }
-        return sendMessage(endpoint, message);
+        return sendMessage(endpoint, jsonPayload);
     }
 
     @Override

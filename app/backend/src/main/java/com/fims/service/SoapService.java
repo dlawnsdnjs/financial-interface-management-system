@@ -14,9 +14,14 @@ public class SoapService implements ProtocolHandler {
     @Override
     public String execute(String endpoint, String method, Object body, Map<String, String> parameters) {
         String payload = body != null ? body.toString() : "";
-        // 파라미터를 페이로드에 동적으로 반영 (예시: 파라미터가 있을 경우 메시지에 추가)
+        
+        // 파라미터를 XML 요소로 변환하여 페이로드에 포함
         if (parameters != null && !parameters.isEmpty()) {
-            payload += " | Params: " + parameters.toString();
+            StringBuilder xmlParams = new StringBuilder();
+            parameters.forEach((k, v) -> 
+                xmlParams.append(String.format("<%s>%s</%s>", k, v, k))
+            );
+            payload = String.format("<Request>%s<Data>%s</Data></Request>", xmlParams.toString(), payload);
         }
         return executeSoapRequest(endpoint, method, payload);
     }
