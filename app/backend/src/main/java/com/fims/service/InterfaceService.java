@@ -64,6 +64,7 @@ public class InterfaceService {
         existing.setIntfName(updatedEntity.getIntfName());
         existing.setProtType(updatedEntity.getProtType());
         existing.setEndPoint(updatedEntity.getEndPoint());
+        existing.setHttpMethod(updatedEntity.getHttpMethod());
         existing.setAuthInfo(updatedEntity.getAuthInfo());
         existing.setStatus(updatedEntity.getStatus());
 
@@ -72,7 +73,10 @@ public class InterfaceService {
 
     @Transactional
     public Map<String, Object> executeInterface(String intfId) {
-        return executeInterface(intfId, "GET", null);
+        InterfaceEntity entity = interfaceRepository.findByIntfId(intfId)
+                .orElseThrow(() -> new RuntimeException("Interface not found: " + intfId));
+        String method = entity.getHttpMethod() != null ? entity.getHttpMethod() : "GET";
+        return executeInterface(intfId, method, null);
     }
 
     @Transactional
@@ -94,6 +98,9 @@ public class InterfaceService {
         String status = "SUCCESS";
         String resultCode = "200";
         String responsePayload = "";
+        if(body == null){
+            body = entity.getAuthInfo();
+        }
         
         try {
             switch (entity.getProtType().toUpperCase()) {
@@ -167,13 +174,30 @@ public class InterfaceService {
 
     private String executeRest(InterfaceEntity entity, String method, Object body) {
         try {
-            log.info("Calling REST endpoint: {} via {}", entity.getEndPoint(), method);
+            // 파라미터를 쿼리 스트링으로 변환 (URLEncoder 적용)
+            String queryString = entity.getParameters().stream()
+                    .map(p -> {
+                        try {
+                            return java.net.URLEncoder.encode(p.getKey(), "UTF-8") + "=" + 
+                                   java.net.URLEncoder.encode(p.getValue(), "UTF-8");
+                        } catch (java.io.UnsupportedEncodingException e) {
+                            return p.getKey() + "=" + p.getValue();
+                        }
+                    })
+                    .collect(Collectors.joining("&"));
+            
+            String url = entity.getEndPoint();
+            if (!queryString.isEmpty()) {
+                url += (url.contains("?") ? "&" : "?") + queryString;
+            }
+
+            log.info("Calling REST endpoint: {} via {}", url, method);
+            
             if ("POST".equalsIgnoreCase(method)) {
                 return restTemplate.postForObject(entity.getEndPoint(), body, String.class);
             }
-            // For other methods like PUT, DELETE, etc., you'd extend this.
-            // For now, defaulting to GET if not POST.
-            return restTemplate.getForObject(entity.getEndPoint(), String.class);
+            
+            return restTemplate.getForObject(url, String.class);
         } catch (Exception e) {
             log.warn("REST endpoint call failed: {}", e.getMessage());
             throw new RuntimeException("REST call failed: " + e.getMessage());

@@ -15,9 +15,23 @@ const InterfaceForm: React.FC<InterfaceFormProps> = ({ initialData, onSubmit, on
     intfName: '',
     protType: 'REST',
     endPoint: '',
-    authInfo: '',
+    parameters: [],
     status: 'ACTIVE'
   });
+
+  const addParameter = () => {
+    setFormData({ ...formData, parameters: [...formData.parameters, { key: '', value: '' }] });
+  };
+
+  const removeParameter = (index: number) => {
+    setFormData({ ...formData, parameters: formData.parameters.filter((_, i) => i !== index) });
+  };
+
+  const updateParameter = (index: number, field: 'key' | 'value', value: string) => {
+    const newParameters = [...formData.parameters];
+    newParameters[index][field] = value;
+    setFormData({ ...formData, parameters: newParameters });
+  };
 
   const isEdit = !!initialData?.id;
 
@@ -29,6 +43,10 @@ const InterfaceForm: React.FC<InterfaceFormProps> = ({ initialData, onSubmit, on
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (formData.parameters.some(p => !p.key.trim())) {
+      alert("Parameter key cannot be empty.");
+      return;
+    }
     onSubmit(formData);
   };
 
@@ -107,13 +125,23 @@ const InterfaceForm: React.FC<InterfaceFormProps> = ({ initialData, onSubmit, on
             </div>
           </div>
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-slate-500 uppercase">Auth Info (JSON or Raw)</label>
-            <textarea 
-              placeholder='{"apiKey": "sk_test_..."}'
-              className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all h-20 resize-none font-mono"
-              value={formData.authInfo}
-              onChange={e => setFormData({...formData, authInfo: e.target.value})}
-            />
+            <div className="flex justify-between items-center">
+              <label className="text-xs font-bold text-slate-500 uppercase">Parameters</label>
+              <button type="button" onClick={addParameter} className="text-xs text-blue-600 font-bold hover:underline">+ Add Parameter</button>
+            </div>
+            {formData.parameters.map((param, index) => (
+              <div key={index} className="flex gap-2">
+                <input 
+                  type="text" placeholder="Key" className="w-1/3 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
+                  value={param.key} onChange={e => updateParameter(index, 'key', e.target.value)}
+                />
+                <input 
+                  type="text" placeholder="Value" className="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm"
+                  value={param.value} onChange={e => updateParameter(index, 'value', e.target.value)}
+                />
+                <button type="button" onClick={() => removeParameter(index)} className="text-red-500 font-bold px-2">×</button>
+              </div>
+            ))}
           </div>
           <div className="mt-4 flex gap-3">
             <button 

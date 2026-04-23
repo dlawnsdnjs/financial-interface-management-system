@@ -28,6 +28,7 @@ public class DataInitializer implements CommandLineRunner {
                     .intfName("금감원 전자공시 연동 (DART)")
                     .protType("REST")
                     .endPoint("https://opendart.fss.or.kr/api/list.json")
+                    .httpMethod("GET")
                     .status("ACTIVE")
                     .build(),
                 InterfaceEntity.builder()
@@ -35,6 +36,7 @@ public class DataInitializer implements CommandLineRunner {
                     .intfName("보험협회 청약정보 SOAP 연동")
                     .protType("SOAP")
                     .endPoint("http://api.klia.or.kr/services/SubscriptionInfo")
+                    .httpMethod("POST")
                     .status("ACTIVE")
                     .build(),
                 InterfaceEntity.builder()

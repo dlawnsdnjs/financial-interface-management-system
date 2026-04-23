@@ -36,6 +36,8 @@ public class InterfaceEntity {
 
     private String endPoint;
 
+    private String httpMethod; // GET, POST, PUT, DELETE, etc.
+
     @Column(columnDefinition = "TEXT")
     private String authInfo; // 인증 정보
 

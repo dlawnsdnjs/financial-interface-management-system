@@ -1,10 +1,15 @@
+export interface Parameter {
+  key: string;
+  value: string;
+}
+
 export interface Interface {
   id?: number;
   intfId: string;
   intfName: string;
   protType: string;
   endPoint: string;
-  authInfo: string;
+  parameters: Parameter[];
   status: string;
 }
 
