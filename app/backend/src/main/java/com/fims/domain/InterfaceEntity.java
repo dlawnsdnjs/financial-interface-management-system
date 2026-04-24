@@ -29,8 +29,13 @@ public class InterfaceEntity {
     @Builder.Default
     private boolean enabled = true;
 
-    // 프로토콜별 상세 설정 (확장성을 위해 JSON 타입으로 저장)
+    // 프로토콜별 상세 설정
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "json")
     private Map<String, Object> protocolConfig;
+
+    // 실행 시 기본 인자값
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "json")
+    private Map<String, Object> defaultArguments;
 }

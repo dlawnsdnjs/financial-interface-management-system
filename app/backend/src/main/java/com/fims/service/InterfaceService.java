@@ -13,12 +13,15 @@ public class InterfaceService {
         this.handlers = handlers;
     }
 
-    public void processInterface(InterfaceEntity entity, Object payload) {
+    public Object processInterface(InterfaceEntity entity, Object payload) {
         ProtocolHandler handler = handlers.stream()
                 .filter(h -> h.supports(entity.getProtocolType()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Unsupported protocol: " + entity.getProtocolType()));
 
-        handler.execute(entity, payload);
+        // payload가 없으면 defaultArguments 사용
+        Object effectivePayload = (payload != null) ? payload : entity.getDefaultArguments();
+        
+        return handler.execute(entity, effectivePayload);
     }
 }

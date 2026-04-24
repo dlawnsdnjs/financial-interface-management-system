@@ -4,5 +4,5 @@ import com.fims.domain.InterfaceEntity;
 
 public interface ProtocolHandler {
     boolean supports(String protocolType);
-    void execute(InterfaceEntity entity, Object payload);
+    Object execute(InterfaceEntity entity, Object payload);
 }
