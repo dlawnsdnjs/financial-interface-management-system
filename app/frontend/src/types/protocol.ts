@@ -20,8 +20,9 @@ export const PROTOCOL_SCHEMAS: Record<ProtocolType, ProtocolSchema> = {
   SOAP: {
     protocolType: 'SOAP',
     configFields: [
-      { name: 'wsdlUrl', label: 'WSDL URL', type: 'text', required: true },
-      { name: 'operation', label: 'Operation', type: 'text', required: true },
+      { name: 'wsdlUrl', label: 'Endpoint URL', type: 'text', required: true, placeholder: 'https://example.com/service.wso' },
+      { name: 'soapAction', label: 'SOAPAction Header', type: 'text', required: false, placeholder: 'http://tempuri.org/OperationName' },
+      { name: 'operation', label: 'Operation (Optional)', type: 'text', required: false },
       { name: 'namespace', label: 'Namespace (Optional)', type: 'text', required: false }
     ],
     argFields: [

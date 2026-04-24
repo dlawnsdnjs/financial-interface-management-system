@@ -32,8 +32,10 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({ fields, onChange, init
       {isRaw ? (
         <div className="flex flex-col">
           <label className="text-sm font-medium mb-1">Raw Request Body</label>
+          <p className="text-xs text-gray-500 mb-2">SOAP Envelope을 포함한 전체 XML 전문을 입력하세요.</p>
           <textarea
             className="border p-2 rounded h-40 font-mono"
+            placeholder="<soap:Envelope ...> ... </soap:Envelope>"
             value={initialData.rawBody || ''}
             onChange={(e) => handleChange('rawBody', e.target.value)}
           />
