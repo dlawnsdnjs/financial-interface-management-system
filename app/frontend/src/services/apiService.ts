@@ -37,6 +37,10 @@ export const deleteInterface = async (id: number) => {
 };
 
 export const executeInterface = async (id: number, payload?: any) => {
-  const response = await axios.post(`${API_BASE_URL}/interfaces/${id}/execute`, payload);
+  const response = await axios.post(`${API_BASE_URL}/interfaces/${id}/execute`, payload || {}, {
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  });
   return response.data;
 };

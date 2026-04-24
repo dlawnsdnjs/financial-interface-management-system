@@ -55,11 +55,21 @@ export const PROTOCOL_SCHEMAS: Record<ProtocolType, ProtocolSchema> = {
   REST: {
     protocolType: 'REST',
     configFields: [
-      { name: 'url', label: 'URL', type: 'text', required: true },
-      { name: 'method', label: 'Method', type: 'select', options: [{label: 'GET', value: 'GET'}, {label: 'POST', value: 'POST'}], required: true }
+      { name: 'url', label: '기본 URL (Base URL)', type: 'text', required: true, placeholder: 'https://api.example.com/v1/resource' },
+      { name: 'method', label: 'HTTP 메서드', type: 'select', options: [
+        {label: 'GET', value: 'GET'}, 
+        {label: 'POST', value: 'POST'},
+        {label: 'PUT', value: 'PUT'},
+        {label: 'DELETE', value: 'DELETE'}
+      ], required: true }
     ],
     argFields: [
-      { name: 'body', label: 'Request Body (JSON)', type: 'text', required: false }
+      { 
+        name: 'params', 
+        label: '요청 데이터 (JSON)', 
+        type: 'textarea', 
+        placeholder: '{"key1": "value1", "key2": "value2"}\nGET 요청 시 자동으로 쿼리 스트링으로 변환됩니다.' 
+      }
     ],
     supportsRawBody: true
   }

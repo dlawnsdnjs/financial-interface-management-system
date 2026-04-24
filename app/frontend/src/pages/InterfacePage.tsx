@@ -99,9 +99,13 @@ const InterfacePage: React.FC = () => {
       setLoading(true);
       // 백엔드에서 payload가 null이면 defaultArguments를 사용하도록 처리됨
       const result = await executeInterface(item.id!, null);
-      alert('실행 성공: ' + (typeof result === 'object' ? JSON.stringify(result) : result));
+      const displayResult = typeof result === 'object' ? JSON.stringify(result, null, 2) : result;
+      alert('실행 성공:\n' + displayResult);
     } catch (error: any) {
-      alert('실행 실패: ' + (error.response?.data || error.message));
+      const errorMsg = error.response?.data 
+        ? (typeof error.response.data === 'object' ? JSON.stringify(error.response.data, null, 2) : error.response.data)
+        : error.message;
+      alert('실행 실패:\n' + errorMsg);
     } finally {
       setLoading(false);
     }
