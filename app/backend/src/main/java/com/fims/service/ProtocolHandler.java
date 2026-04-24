@@ -1,9 +1,8 @@
 package com.fims.service;
 
-import com.fims.model.InterfaceEntity;
-import java.util.Map;
+import com.fims.domain.InterfaceEntity;
 
 public interface ProtocolHandler {
     boolean supports(String protocolType);
-    String execute(InterfaceEntity interfaceEntity, Object body, Map<String, String> parameters);
+    void execute(InterfaceEntity entity, Object payload);
 }
