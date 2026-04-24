@@ -97,10 +97,29 @@ const InterfacePage: React.FC = () => {
   const handleExecute = async (item: InterfaceEntity) => {
     try {
       setLoading(true);
-      // 백엔드에서 payload가 null이면 defaultArguments를 사용하도록 처리됨
       const result = await executeInterface(item.id!, null);
-      const displayResult = typeof result === 'object' ? JSON.stringify(result, null, 2) : result;
-      alert('실행 성공:\n' + displayResult);
+      
+      // 파일 다운로드 처리
+      if (result && typeof result === 'object' && result.type === 'file') {
+        const { fileName, content } = result;
+        const byteCharacters = atob(content);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'application/octet-stream' });
+        
+        const link = document.createElement('a');
+        link.href = window.URL.createObjectURL(blob);
+        link.download = fileName;
+        link.click();
+        
+        alert('파일 다운로드 완료: ' + fileName);
+      } else {
+        const displayResult = typeof result === 'object' ? JSON.stringify(result, null, 2) : result;
+        alert('실행 성공:\n' + displayResult);
+      }
     } catch (error: any) {
       const errorMsg = error.response?.data 
         ? (typeof error.response.data === 'object' ? JSON.stringify(error.response.data, null, 2) : error.response.data)

@@ -1,11 +1,13 @@
-export type ProtocolType = 'SOAP' | 'SFTP' | 'MQ' | 'REST';
+export type ProtocolType = 'SOAP' | 'FILE' | 'MQ' | 'REST';
 
 export interface FieldConfig {
   name: string;
   label: string;
-  type: 'text' | 'number' | 'password' | 'select' | 'textarea';
+  type: 'text' | 'number' | 'password' | 'select' | 'textarea' | 'file';
   required?: boolean;
   options?: { label: string; value: string | number }[];
+  placeholder?: string;
+  visibleIf?: (data: Record<string, any>) => boolean;
 }
 
 export interface ProtocolSchema {
@@ -30,18 +32,79 @@ export const PROTOCOL_SCHEMAS: Record<ProtocolType, ProtocolSchema> = {
     ],
     supportsRawBody: true
   },
-  SFTP: {
-    protocolType: 'SFTP',
+  FILE: {
+    protocolType: 'FILE',
     configFields: [
+      { name: 'protocol', label: '프로토콜', type: 'select', required: true, options: [
+        { label: 'SFTP', value: 'SFTP' },
+        { label: 'FTP', value: 'FTP' }
+      ]},
+      { name: 'mode', label: '전송 모드', type: 'select', required: true, options: [
+        { label: 'Upload (전송)', value: 'UPLOAD' },
+        { label: 'Download (수신)', value: 'DOWNLOAD' }
+      ]},
       { name: 'host', label: 'Host', type: 'text', required: true },
       { name: 'port', label: 'Port', type: 'number', required: true },
       { name: 'username', label: 'Username', type: 'text', required: true },
-      { name: 'password', label: 'Password', type: 'password', required: true },
-      { name: 'remoteDir', label: 'Remote Directory', type: 'text', required: false },
-      { name: 'fileName', label: 'File Name', type: 'text', required: false }
+      { 
+        name: 'authType', 
+        label: '인증 방식', 
+        type: 'select', 
+        options: [
+          { label: 'Password', value: 'PASSWORD' },
+          { label: 'SSH Key', value: 'SSH_KEY' }
+        ],
+        visibleIf: (data) => data.protocol === 'SFTP'
+      },
+      { 
+        name: 'password', 
+        label: 'Password', 
+        type: 'password', 
+        required: false,
+        visibleIf: (data) => data.protocol === 'FTP' || (data.protocol === 'SFTP' && data.authType === 'PASSWORD')
+      },
+      {
+        name: 'sshKeyType',
+        label: 'SSH Key 입력 방식',
+        type: 'select',
+        options: [
+          { label: '파일 선택 (Upload)', value: 'FILE' },
+          { label: '직접 입력 (Text)', value: 'DIRECT' }
+        ],
+        visibleIf: (data) => data.protocol === 'SFTP' && data.authType === 'SSH_KEY'
+      },
+      { 
+        name: 'privateKeyFile', 
+        label: 'SSH Key 파일 선택', 
+        type: 'file', 
+        required: false,
+        visibleIf: (data) => data.protocol === 'SFTP' && data.authType === 'SSH_KEY' && data.sshKeyType === 'FILE'
+      },
+      { 
+        name: 'privateKey', 
+        label: 'SSH Key 직접 입력', 
+        type: 'textarea', 
+        required: false,
+        visibleIf: (data) => data.protocol === 'SFTP' && data.authType === 'SSH_KEY' && data.sshKeyType === 'DIRECT'
+      },
+      { name: 'remoteDir', label: '원격 디렉토리', type: 'text', required: false },
+      { name: 'fileName', label: '파일명', type: 'text', required: false }
     ],
     argFields: [
-      { name: 'content', label: 'File Content', type: 'text', required: true }
+      { 
+        name: 'file', 
+        label: '전송할 파일 선택', 
+        type: 'file', 
+        required: false,
+        visibleIf: (data) => data.mode === 'UPLOAD' || !data.mode // 기본값 대비
+      },
+      { 
+        name: 'content', 
+        label: '파일 내용 직접 입력', 
+        type: 'textarea', 
+        required: false,
+        visibleIf: (data) => data.mode === 'UPLOAD' || !data.mode
+      }
     ]
   },
   MQ: {

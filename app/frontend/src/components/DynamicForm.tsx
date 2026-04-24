@@ -41,7 +41,9 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({ fields, onChange, init
           />
         </div>
       ) : (
-        fields.map((field: FieldConfig) => (
+        fields
+          .filter(field => !field.visibleIf || field.visibleIf(initialData))
+          .map((field: FieldConfig) => (
           <div key={field.name} className="flex flex-col">
             <label className="text-sm font-medium mb-1">{field.label}</label>
             {field.type === 'select' ? (
@@ -60,6 +62,26 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({ fields, onChange, init
                 className="border p-2 rounded h-40"
                 value={initialData[field.name] || ''}
                 onChange={(e) => handleChange(field.name, e.target.value)}
+              />
+            ) : field.type === 'file' ? (
+              <input
+                type="file"
+                className="border p-2 rounded"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                      const base64 = event.target?.result as string;
+                      // base64 data contains prefix like "data:image/png;base64,"
+                      handleChange(field.name, {
+                        name: file.name,
+                        content: base64.split(',')[1] // only content
+                      });
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
               />
             ) : (
               <input
