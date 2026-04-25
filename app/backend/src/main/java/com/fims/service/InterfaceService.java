@@ -19,9 +19,7 @@ public class InterfaceService {
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Unsupported protocol: " + entity.getProtocolType()));
 
-        // payload가 없으면 defaultArguments 사용
-        Object effectivePayload = (payload != null) ? payload : entity.getDefaultArguments();
-        
-        return handler.execute(entity, effectivePayload);
+        // 실행 시 runtime payload는 무시하고 항상 저장된 defaultArguments 사용
+        return handler.execute(entity, entity.getDefaultArguments());
     }
 }

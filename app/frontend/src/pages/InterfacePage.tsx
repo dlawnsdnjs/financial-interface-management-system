@@ -23,7 +23,9 @@ const InterfacePage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  // ... (기존 loadInterfaces, handleEdit, resetForm 등 생략)
+  useEffect(() => {
+    loadInterfaces();
+  }, []);
 
   const handleSelectFiles = (remoteDir: string, fileNames: string[]) => {
     setFormData(prev => ({
@@ -32,7 +34,6 @@ const InterfacePage: React.FC = () => {
       fileName: fileNames.join(',')
     }));
   };
-// ...
 
   const loadInterfaces = async () => {
     try {
@@ -80,7 +81,7 @@ const InterfacePage: React.FC = () => {
         setMessage({ text: '수정 완료', type: 'success' });
       } else {
         await createInterface(payload);
-        setMessage({ text: '저장 완료', type: 'success' });
+        setMessage({ text: '장 완료', type: 'success' });
       }
       resetForm();
       loadInterfaces();
@@ -107,7 +108,6 @@ const InterfacePage: React.FC = () => {
       setLoading(true);
       const result = await executeInterface(item.id!, payload);
       
-      // 파일 다운로드 처리
       if (result && typeof result === 'object' && (result.type === 'file' || result.type === 'multi-file')) {
         const processFile = (fileName: string, content: string) => {
           const byteCharacters = atob(content);
@@ -126,7 +126,6 @@ const InterfacePage: React.FC = () => {
         if (result.type === 'file') {
           processFile(result.fileName, result.content);
         } else {
-          // multi-file 처리
           Object.entries(result).forEach(([key, value]) => {
             if (key !== 'type') {
               processFile(key, value as string);

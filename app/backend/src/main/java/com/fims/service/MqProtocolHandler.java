@@ -2,7 +2,7 @@ package com.fims.service;
 
 import com.fims.domain.InterfaceEntity;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.jms.core.JmsTemplate;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -11,10 +11,12 @@ import java.util.Map;
 @Service
 public class MqProtocolHandler implements ProtocolHandler {
 
-    private final JmsTemplate jmsTemplate;
+    private final RabbitTemplate rabbitTemplate;
+    private final MqListenerManager listenerManager;
 
-    public MqProtocolHandler(JmsTemplate jmsTemplate) {
-        this.jmsTemplate = jmsTemplate;
+    public MqProtocolHandler(RabbitTemplate rabbitTemplate, MqListenerManager listenerManager) {
+        this.rabbitTemplate = rabbitTemplate;
+        this.listenerManager = listenerManager;
     }
 
     @Override
@@ -22,23 +24,41 @@ public class MqProtocolHandler implements ProtocolHandler {
         return "MQ".equalsIgnoreCase(protocolType);
     }
 
+    private Object handleSubscribe(InterfaceEntity entity) {
+        Map<String, Object> config = entity.getProtocolConfig();
+        String queueName = (String) config.get("queueName");
+        String ackMode = (String) config.getOrDefault("ackMode", "manual");
+        
+        listenerManager.startListener(entity.getName(), queueName, ackMode);
+        
+        return "MQ Subscriber started on queue: " + queueName + " (ACK: " + ackMode + ")";
+    }
+
     @Override
     public Object execute(InterfaceEntity entity, Object payload) {
         Map<String, Object> config = entity.getProtocolConfig();
         if (config == null) throw new IllegalArgumentException("MQ config is missing");
 
-        String queueName = (String) config.get("queueName");
-        if (queueName == null) throw new IllegalArgumentException("Queue name is missing");
+        String mode = (String) config.getOrDefault("mode", "SUB");
+        
+        if ("SUB".equalsIgnoreCase(mode)) {
+            return handleSubscribe(entity);
+        } else {
+            String queueName = (String) config.get("queueName");
+            if (queueName == null) throw new IllegalArgumentException("Queue name is missing");
 
-        log.info("Sending message to MQ [{}]: {}", entity.getName(), queueName);
+            String message = (payload instanceof Map) ? (String) ((Map<String, Object>) payload).get("message") 
+                                                      : (payload != null ? payload.toString() : "");
 
-        try {
-            jmsTemplate.convertAndSend(queueName, payload);
-            log.info("MQ message sent successfully: {}", queueName);
-            return "Message sent to queue: " + queueName;
-        } catch (Exception e) {
-            log.error("MQ failed: {}", e.getMessage());
-            throw new RuntimeException("MQ transmission failed", e);
+            log.info("Publishing message to RabbitMQ [{}]: {} -> {}", entity.getName(), queueName, message);
+            
+            try {
+                rabbitTemplate.convertAndSend(queueName, message);
+                return "Message published to " + queueName;
+            } catch (Exception e) {
+                log.error("RabbitMQ publish failed: {}", e.getMessage());
+                throw new RuntimeException("RabbitMQ transmission failed", e);
+            }
         }
     }
 }

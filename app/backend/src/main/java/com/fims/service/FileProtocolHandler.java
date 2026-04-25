@@ -139,33 +139,54 @@ public class FileProtocolHandler implements ProtocolHandler {
     }
 
     private byte[] getUploadBytes(Object payload) {
-        if (!(payload instanceof Map)) return new byte[0];
-        Map<String, Object> map = (Map<String, Object>) payload;
+        if (payload == null) return new byte[0];
+        
+        // payload에서 content를 추출
+        byte[] content = extractContent(payload);
+        if (content != null) return content;
+        
+        log.info("getUploadBytes: No content found in payload structure");
+        return new byte[0];
+    }
 
-        // 프론트엔드에서 전달되는 실행 페이로드의 구조에 맞춰 
-        // 1. file 객체 내의 content 확인
-        if (map.containsKey("file")) {
-            Object fileObj = map.get("file");
-            if (fileObj instanceof Map) {
-                String base64Content = (String) ((Map<?, ?>) fileObj).get("content");
-                if (base64Content != null) {
-                    return Base64.getDecoder().decode(base64Content);
-                }
-            }
+    private byte[] extractContent(Object payload) {
+        if (payload == null) return null;
+        
+        Map<String, Object> map = (payload instanceof Map) ? (Map<String, Object>) payload : new HashMap<>();
+        
+        // 1. Check for nested 'file' -> 'content'
+        Object fileObj = map.get("file");
+        if (fileObj instanceof Map) {
+            Object content = ((Map<?, ?>) fileObj).get("content");
+            if (content != null) return decodeOrGetBytes(content.toString());
         }
         
-        // 2. 만약 실행 인자가 flat하게 들어온 경우 (과거 또는 다른 경로)
-        if (map.containsKey("content")) {
-             String content = (String) map.get("content");
-             if (content != null) return content.getBytes(StandardCharsets.UTF_8);
+        // 2. Check for direct 'content'
+        if (map.containsKey("content") && map.get("content") != null) {
+            return decodeOrGetBytes(map.get("content").toString());
         }
+        
+        return null;
+    }
 
-        // 3. RawBody 확인
-        if (map.containsKey("rawBody")) {
-            return map.get("rawBody").toString().getBytes(StandardCharsets.UTF_8);
+    private byte[] decodeOrGetBytes(String content) {
+        try {
+            return Base64.getDecoder().decode(content);
+        } catch (IllegalArgumentException e) {
+            log.debug("Content not Base64 encoded, treating as raw string.");
+            return content.getBytes(StandardCharsets.UTF_8);
         }
+    }
 
-        return new byte[0];
+    private Object findNestedKey(Map<String, Object> map, String key) {
+        if (map.containsKey(key)) return map.get(key);
+        for (Object value : map.values()) {
+            if (value instanceof Map) {
+                Object found = findNestedKey((Map<String, Object>) value, key);
+                if (found != null) return found;
+            }
+        }
+        return null;
     }
 
     private int getPort(Map<String, Object> config, int defaultPort) {

@@ -39,9 +39,8 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ config, onSelect }) 
     // 폴더는 선택 불가, 파일만 선택 가능
     if (isDirectory) return;
     
-    const next = selectedFiles.includes(name) 
-      ? selectedFiles.filter(f => f !== name)
-      : [...selectedFiles, name];
+    // 라디오 버튼처럼 동작하도록 단일 선택
+    const next = selectedFiles.includes(name) ? [] : [name];
     setSelectedFiles(next);
     onSelect(currentPath, next);
   };
@@ -61,7 +60,8 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ config, onSelect }) 
         {loading ? <p>로딩 중...</p> : files.map(f => (
           <div key={f.name} className="flex items-center gap-2 hover:bg-blue-50 p-1">
             <input 
-              type="checkbox" 
+              type="radio" 
+              name="fileSelection"
               checked={selectedFiles.includes(f.name)} 
               onChange={() => toggleFile(f.name, f.isDirectory)} 
               disabled={f.isDirectory}
