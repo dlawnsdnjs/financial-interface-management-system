@@ -35,7 +35,10 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ config, onSelect }) 
     }
   };
 
-  const toggleFile = (name: string) => {
+  const toggleFile = (name: string, isDirectory: boolean) => {
+    // 폴더는 선택 불가, 파일만 선택 가능
+    if (isDirectory) return;
+    
     const next = selectedFiles.includes(name) 
       ? selectedFiles.filter(f => f !== name)
       : [...selectedFiles, name];
@@ -56,9 +59,17 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ config, onSelect }) 
       </div>
       <div className="h-48 overflow-y-auto bg-white border p-2">
         {loading ? <p>로딩 중...</p> : files.map(f => (
-          <div key={f.name} className="flex items-center gap-2 hover:bg-blue-50 cursor-pointer p-1">
-            <input type="checkbox" checked={selectedFiles.includes(f.name)} onChange={() => toggleFile(f.name)} />
-            <span onClick={() => f.isDirectory && fetchFiles(`${currentPath === '/' ? '' : currentPath}/${f.name}`)}>
+          <div key={f.name} className="flex items-center gap-2 hover:bg-blue-50 p-1">
+            <input 
+              type="checkbox" 
+              checked={selectedFiles.includes(f.name)} 
+              onChange={() => toggleFile(f.name, f.isDirectory)} 
+              disabled={f.isDirectory}
+            />
+            <span 
+              className="cursor-pointer flex-1"
+              onClick={() => f.isDirectory && fetchFiles(`${currentPath === '/' ? '' : currentPath}/${f.name}`)}
+            >
               {f.isDirectory ? '📁' : '📄'} {f.name}
             </span>
           </div>

@@ -142,24 +142,27 @@ public class FileProtocolHandler implements ProtocolHandler {
         if (!(payload instanceof Map)) return new byte[0];
         Map<String, Object> map = (Map<String, Object>) payload;
 
-        // 우선순위: file 객체가 존재하면 이를 우선 처리
-        if (map.containsKey("file") && map.get("file") instanceof Map) {
+        // 프론트엔드에서 전달되는 실행 페이로드의 구조에 맞춰 
+        // 1. file 객체 내의 content 확인
+        if (map.containsKey("file")) {
             Object fileObj = map.get("file");
-            String base64Content = (String) ((Map<?, ?>) fileObj).get("content");
-            if (base64Content != null) {
-                return Base64.getDecoder().decode(base64Content);
+            if (fileObj instanceof Map) {
+                String base64Content = (String) ((Map<?, ?>) fileObj).get("content");
+                if (base64Content != null) {
+                    return Base64.getDecoder().decode(base64Content);
+                }
             }
         }
         
-        // Raw 또는 일반 content 처리
-        Object rawBody = map.get("rawBody");
-        if (rawBody != null) {
-            return rawBody.toString().getBytes(StandardCharsets.UTF_8);
+        // 2. 만약 실행 인자가 flat하게 들어온 경우 (과거 또는 다른 경로)
+        if (map.containsKey("content")) {
+             String content = (String) map.get("content");
+             if (content != null) return content.getBytes(StandardCharsets.UTF_8);
         }
 
-        Object contentObj = map.get("content");
-        if (contentObj != null) {
-            return contentObj.toString().getBytes(StandardCharsets.UTF_8);
+        // 3. RawBody 확인
+        if (map.containsKey("rawBody")) {
+            return map.get("rawBody").toString().getBytes(StandardCharsets.UTF_8);
         }
 
         return new byte[0];
