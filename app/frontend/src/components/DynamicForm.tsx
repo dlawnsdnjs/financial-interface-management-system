@@ -18,24 +18,26 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({ fields, onChange, init
   return (
     <div className="space-y-4">
       {supportsRawBody && (
-        <div className="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            checked={isRaw}
-            onChange={(e) => setIsRaw(e.target.checked)}
-            id="raw-toggle"
-          />
-          <label htmlFor="raw-toggle" className="text-sm">Raw 모드 (직접 입력)</label>
+        <div className="bg-gray-50 p-3 rounded border border-gray-200">
+          <label className="flex items-center space-x-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isRaw}
+              onChange={(e) => setIsRaw(e.target.checked)}
+              className="w-4 h-4 text-blue-600"
+            />
+            <span className="text-sm font-semibold text-gray-700">Raw 데이터 모드 사용 (SOAP XML / JSON 등)</span>
+          </label>
         </div>
       )}
 
-      {isRaw ? (
+      {supportsRawBody && isRaw ? (
         <div className="flex flex-col">
-          <label className="text-sm font-medium mb-1">Raw Request Body</label>
-          <p className="text-xs text-gray-500 mb-2">SOAP Envelope을 포함한 전체 XML 전문을 입력하세요.</p>
+          <label className="text-sm font-medium mb-1 text-gray-700">Raw Request Body</label>
+          <p className="text-xs text-gray-500 mb-2">서버로 직접 전송할 데이터를 입력하세요.</p>
           <textarea
-            className="border p-2 rounded h-40 font-mono"
-            placeholder="<soap:Envelope ...> ... </soap:Envelope>"
+            className="border p-3 rounded h-48 font-mono text-sm"
+            placeholder="예: <soap:Envelope>...</soap:Envelope> 또는 { ... }"
             value={initialData.rawBody || ''}
             onChange={(e) => handleChange('rawBody', e.target.value)}
           />
@@ -45,10 +47,10 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({ fields, onChange, init
           .filter(field => !field.visibleIf || field.visibleIf(initialData))
           .map((field: FieldConfig) => (
           <div key={field.name} className="flex flex-col">
-            <label className="text-sm font-medium mb-1">{field.label}</label>
+            <label className="text-sm font-medium mb-1 text-gray-700">{field.label}</label>
             {field.type === 'select' ? (
               <select
-                className="border p-2 rounded"
+                className="border p-2 rounded focus:ring-2 focus:ring-blue-500"
                 value={initialData[field.name] || ''}
                 onChange={(e) => handleChange(field.name, e.target.value)}
               >
@@ -59,34 +61,40 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({ fields, onChange, init
               </select>
             ) : field.type === 'textarea' ? (
               <textarea
-                className="border p-2 rounded h-40"
+                className="border p-2 rounded h-32 focus:ring-2 focus:ring-blue-500"
                 value={initialData[field.name] || ''}
                 onChange={(e) => handleChange(field.name, e.target.value)}
               />
             ) : field.type === 'file' ? (
-              <input
-                type="file"
-                className="border p-2 rounded"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                      const base64 = event.target?.result as string;
-                      // base64 data contains prefix like "data:image/png;base64,"
-                      handleChange(field.name, {
-                        name: file.name,
-                        content: base64.split(',')[1] // only content
-                      });
-                    };
-                    reader.readAsDataURL(file);
-                  }
-                }}
-              />
+              <div className="space-y-2 border p-3 rounded bg-white">
+                {initialData[field.name]?.name && (
+                  <p className="text-sm text-blue-600 font-medium bg-blue-50 p-2 rounded">
+                    📂 선택된 파일: {initialData[field.name].name}
+                  </p>
+                )}
+                <input
+                  type="file"
+                  className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        const base64 = event.target?.result as string;
+                        handleChange(field.name, {
+                          name: file.name,
+                          content: base64.split(',')[1]
+                        });
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+              </div>
             ) : (
               <input
                 type={field.type}
-                className="border p-2 rounded"
+                className="border p-2 rounded focus:ring-2 focus:ring-blue-500"
                 value={initialData[field.name] || ''}
                 onChange={(e) => handleChange(field.name, e.target.value)}
               />

@@ -44,3 +44,10 @@ export const executeInterface = async (id: number, payload?: any) => {
   });
   return response.data;
 };
+
+export const apiService = {
+  post: async (path: string, data: any) => {
+    const response = await axios.post(`${API_BASE_URL}${path}`, data);
+    return response.data;
+  }
+};

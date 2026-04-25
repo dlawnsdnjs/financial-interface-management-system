@@ -93,17 +93,10 @@ export const PROTOCOL_SCHEMAS: Record<ProtocolType, ProtocolSchema> = {
     argFields: [
       { 
         name: 'file', 
-        label: '전송할 파일 선택', 
+        label: '업로드할 파일 선택', 
         type: 'file', 
         required: false,
-        visibleIf: (data) => data.mode === 'UPLOAD' || !data.mode // 기본값 대비
-      },
-      { 
-        name: 'content', 
-        label: '파일 내용 직접 입력', 
-        type: 'textarea', 
-        required: false,
-        visibleIf: (data) => data.mode === 'UPLOAD' || !data.mode
+        visibleIf: (data) => data.mode === 'UPLOAD'
       }
     ]
   },

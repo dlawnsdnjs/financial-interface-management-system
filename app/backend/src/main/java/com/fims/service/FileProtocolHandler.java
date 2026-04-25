@@ -24,6 +24,105 @@ public class FileProtocolHandler implements ProtocolHandler {
         return "FILE".equalsIgnoreCase(protocolType) || "SFTP".equalsIgnoreCase(protocolType);
     }
 
+    public Object listDirectory(Map<String, Object> config, String remotePath) {
+        String protocol = (String) config.getOrDefault("protocol", "SFTP");
+        if ("FTP".equalsIgnoreCase(protocol)) {
+            return listFtpFiles(config, remotePath);
+        } else {
+            return listSftpFiles(config, remotePath);
+        }
+    }
+
+    private Object listFtpFiles(Map<String, Object> config, String remotePath) {
+        String host = getHost(config);
+        int port = getPort(config, 21);
+        String username = (String) config.get("username");
+        String password = (String) config.get("password");
+
+        FTPClient ftpClient = new FTPClient();
+        try {
+            ftpClient.connect(host, port);
+            if (!ftpClient.login(username, password)) {
+                throw new RuntimeException("FTP Login Failed");
+            }
+            ftpClient.enterLocalPassiveMode();
+            
+            if (remotePath != null && !remotePath.isEmpty()) {
+                ftpClient.changeWorkingDirectory(remotePath);
+            }
+            
+            java.util.List<Map<String, Object>> files = new java.util.ArrayList<>();
+            org.apache.commons.net.ftp.FTPFile[] ftpFiles = ftpClient.listFiles();
+            
+            if (ftpFiles != null) {
+                for (org.apache.commons.net.ftp.FTPFile file : ftpFiles) {
+                    Map<String, Object> fileInfo = new HashMap<>();
+                    fileInfo.put("name", file.getName());
+                    fileInfo.put("isDirectory", file.isDirectory());
+                    fileInfo.put("size", file.getSize());
+                    files.add(fileInfo);
+                }
+            }
+            return files;
+        } catch (IOException e) {
+            log.error("FTP list error: ", e);
+            throw new RuntimeException("FTP list failed: " + e.getMessage());
+        } finally {
+            try { ftpClient.disconnect(); } catch (IOException ignored) {}
+        }
+    }
+
+    private Object listSftpFiles(Map<String, Object> config, String remotePath) {
+        String host = getHost(config);
+        int port = getPort(config, 22);
+        String username = (String) config.get("username");
+        String password = (String) config.get("password");
+        String authType = (String) config.getOrDefault("authType", "PASSWORD");
+        String privateKeyContent = (String) config.get("privateKey");
+
+        JSch jsch = new JSch();
+        Session session = null;
+        ChannelSftp sftp = null;
+        try {
+            if ("SSH_KEY".equalsIgnoreCase(authType)) {
+                if (privateKeyContent != null && !privateKeyContent.trim().isEmpty()) {
+                    jsch.addIdentity("key", privateKeyContent.getBytes(StandardCharsets.UTF_8), null, null);
+                }
+            }
+
+            session = jsch.getSession(username, host, port);
+            if ("PASSWORD".equalsIgnoreCase(authType)) {
+                session.setPassword(password);
+            }
+            Properties props = new Properties();
+            props.put("StrictHostKeyChecking", "no");
+            session.setConfig(props);
+            session.connect();
+            
+            sftp = (ChannelSftp) session.openChannel("sftp");
+            sftp.connect();
+            if (remotePath != null && !remotePath.isEmpty()) sftp.cd(remotePath);
+            
+            java.util.List<Map<String, Object>> files = new java.util.ArrayList<>();
+            java.util.Vector<ChannelSftp.LsEntry> entries = sftp.ls(".");
+            for (ChannelSftp.LsEntry entry : entries) {
+                if (entry.getFilename().equals(".") || entry.getFilename().equals("..")) continue;
+                Map<String, Object> fileInfo = new HashMap<>();
+                fileInfo.put("name", entry.getFilename());
+                fileInfo.put("isDirectory", entry.getAttrs().isDir());
+                fileInfo.put("size", entry.getAttrs().getSize());
+                files.add(fileInfo);
+            }
+            return files;
+        } catch (Exception e) {
+            log.error("SFTP list error: ", e);
+            throw new RuntimeException("SFTP list failed: " + e.getMessage());
+        } finally {
+            if (sftp != null && sftp.isConnected()) sftp.disconnect();
+            if (session != null && session.isConnected()) session.disconnect();
+        }
+    }
+
     @Override
     public Object execute(InterfaceEntity entity, Object payload) {
         Map<String, Object> config = entity.getProtocolConfig();
@@ -40,30 +139,52 @@ public class FileProtocolHandler implements ProtocolHandler {
     }
 
     private byte[] getUploadBytes(Object payload) {
-        if (payload instanceof Map) {
-            Map<String, Object> map = (Map<String, Object>) payload;
-            // 프론트엔드에서 file 타입으로 넘긴 경우 { name, content(base64) } 구조
+        if (!(payload instanceof Map)) return new byte[0];
+        Map<String, Object> map = (Map<String, Object>) payload;
+
+        // 우선순위: file 객체가 존재하면 이를 우선 처리
+        if (map.containsKey("file") && map.get("file") instanceof Map) {
             Object fileObj = map.get("file");
-            if (fileObj instanceof Map) {
-                String base64Content = (String) ((Map<?, ?>) fileObj).get("content");
-                if (base64Content != null) {
-                    return Base64.getDecoder().decode(base64Content);
-                }
+            String base64Content = (String) ((Map<?, ?>) fileObj).get("content");
+            if (base64Content != null) {
+                return Base64.getDecoder().decode(base64Content);
             }
-            // 기존 텍스트 입력 방식
-            Object contentObj = map.get("content");
-            if (contentObj != null) {
-                return contentObj.toString().getBytes(StandardCharsets.UTF_8);
-            }
-        } else if (payload != null) {
-            return payload.toString().getBytes(StandardCharsets.UTF_8);
         }
+        
+        // Raw 또는 일반 content 처리
+        Object rawBody = map.get("rawBody");
+        if (rawBody != null) {
+            return rawBody.toString().getBytes(StandardCharsets.UTF_8);
+        }
+
+        Object contentObj = map.get("content");
+        if (contentObj != null) {
+            return contentObj.toString().getBytes(StandardCharsets.UTF_8);
+        }
+
         return new byte[0];
     }
 
-    private Object executeFtp(Map<String, Object> config, String mode, Object payload) {
+    private int getPort(Map<String, Object> config, int defaultPort) {
+        Object portObj = config.get("port");
+        if (portObj == null) return defaultPort;
+        if (portObj instanceof Integer) return (Integer) portObj;
+        try {
+            return Integer.parseInt(portObj.toString());
+        } catch (NumberFormatException e) {
+            return defaultPort;
+        }
+    }
+
+    private String getHost(Map<String, Object> config) {
         String host = (String) config.get("host");
-        int port = (int) config.getOrDefault("port", 21);
+        if (host == null) return "";
+        return host.replaceAll("^(sftp|ftp)://", "");
+    }
+
+    private Object executeFtp(Map<String, Object> config, String mode, Object payload) {
+        String host = getHost(config);
+        int port = getPort(config, 21);
         String username = (String) config.get("username");
         String password = (String) config.get("password");
         String remoteDir = (String) config.getOrDefault("remoteDir", "/");
@@ -89,23 +210,27 @@ public class FileProtocolHandler implements ProtocolHandler {
 
             if ("UPLOAD".equalsIgnoreCase(mode)) {
                 byte[] bytes = getUploadBytes(payload);
-                try (InputStream is = new ByteArrayInputStream(bytes)) {
-                    boolean success = ftpClient.storeFile(fileName, is);
-                    if (!success) throw new RuntimeException("FTP upload failed.");
+                String fileNames = (String) config.getOrDefault("fileName", "");
+                for (String name : fileNames.split(",")) {
+                    if (name.trim().isEmpty()) continue;
+                    try (InputStream is = new ByteArrayInputStream(bytes)) {
+                        boolean success = ftpClient.storeFile(name.trim(), is);
+                        if (!success) log.error("FTP upload failed for: " + name);
+                    }
                 }
-                return "FTP Upload Successful: " + fileName;
+                return "FTP Upload Processed for: " + fileNames;
             } else {
-                // Download: 브라우저에서 다운로드 받을 수 있도록 Base64로 리턴
-                try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
-                    boolean success = ftpClient.retrieveFile(fileName, os);
-                    if (!success) throw new RuntimeException("FTP download failed.");
-                    
-                    Map<String, String> result = new HashMap<>();
-                    result.put("fileName", fileName);
-                    result.put("content", Base64.getEncoder().encodeToString(os.toByteArray()));
-                    result.put("type", "file");
-                    return result;
+                String fileNames = (String) config.getOrDefault("fileName", "");
+                Map<String, Object> results = new HashMap<>();
+                for (String name : fileNames.split(",")) {
+                    if (name.trim().isEmpty()) continue;
+                    try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
+                        boolean success = ftpClient.retrieveFile(name.trim(), os);
+                        if (success) results.put(name.trim(), Base64.getEncoder().encodeToString(os.toByteArray()));
+                    }
                 }
+                results.put("type", "multi-file");
+                return results;
             }
 
         } catch (IOException e) {
@@ -124,8 +249,8 @@ public class FileProtocolHandler implements ProtocolHandler {
     }
 
     private Object executeSftp(Map<String, Object> config, String mode, Object payload) {
-        String host = (String) config.get("host");
-        int port = (int) config.getOrDefault("port", 22);
+        String host = getHost(config);
+        int port = getPort(config, 22);
         String username = (String) config.get("username");
         String authType = (String) config.getOrDefault("authType", "PASSWORD");
         String password = (String) config.get("password");

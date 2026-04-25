@@ -6,6 +6,7 @@ import com.fims.service.InterfaceService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/interfaces")
@@ -74,6 +75,23 @@ public class InterfaceController {
             return ResponseEntity.ok(result != null ? result : "Execution completed successfully");
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Execution failed: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/ftp/list")
+    public ResponseEntity<Object> listFtpFiles(@RequestBody Map<String, Object> request) {
+        Map<String, Object> config = (Map<String, Object>) request.get("config");
+        String remotePath = (String) request.getOrDefault("remotePath", "/");
+        
+        if (config == null || config.get("host") == null) {
+            return ResponseEntity.badRequest().body("Config or Host missing");
+        }
+        
+        com.fims.service.FileProtocolHandler handler = new com.fims.service.FileProtocolHandler();
+        try {
+            return ResponseEntity.ok(handler.listDirectory(config, remotePath));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("FTP listing error: " + e.getMessage());
         }
     }
 }

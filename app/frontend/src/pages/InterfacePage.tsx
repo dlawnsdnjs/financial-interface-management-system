@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PROTOCOL_SCHEMAS, ProtocolType } from '../types/protocol';
 import { DynamicForm } from '../components/DynamicForm';
+import { FileExplorer } from '../components/FileExplorer';
 import { 
   getInterfaces, 
   createInterface, 
@@ -22,9 +23,16 @@ const InterfacePage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  useEffect(() => {
-    loadInterfaces();
-  }, []);
+  // ... (기존 loadInterfaces, handleEdit, resetForm 등 생략)
+
+  const handleSelectFiles = (remoteDir: string, fileNames: string[]) => {
+    setFormData(prev => ({
+      ...prev,
+      remoteDir,
+      fileName: fileNames.join(',')
+    }));
+  };
+// ...
 
   const loadInterfaces = async () => {
     try {
@@ -94,28 +102,39 @@ const InterfacePage: React.FC = () => {
     }
   };
 
-  const handleExecute = async (item: InterfaceEntity) => {
+  const handleExecute = async (item: InterfaceEntity, payload: any = null) => {
     try {
       setLoading(true);
-      const result = await executeInterface(item.id!, null);
+      const result = await executeInterface(item.id!, payload);
       
       // 파일 다운로드 처리
-      if (result && typeof result === 'object' && result.type === 'file') {
-        const { fileName, content } = result;
-        const byteCharacters = atob(content);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
+      if (result && typeof result === 'object' && (result.type === 'file' || result.type === 'multi-file')) {
+        const processFile = (fileName: string, content: string) => {
+          const byteCharacters = atob(content);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'application/octet-stream' });
+          const link = document.createElement('a');
+          link.href = window.URL.createObjectURL(blob);
+          link.download = fileName;
+          link.click();
+        };
+
+        if (result.type === 'file') {
+          processFile(result.fileName, result.content);
+        } else {
+          // multi-file 처리
+          Object.entries(result).forEach(([key, value]) => {
+            if (key !== 'type') {
+              processFile(key, value as string);
+            }
+          });
         }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: 'application/octet-stream' });
         
-        const link = document.createElement('a');
-        link.href = window.URL.createObjectURL(blob);
-        link.download = fileName;
-        link.click();
-        
-        alert('파일 다운로드 완료: ' + fileName);
+        alert('파일 다운로드 요청이 완료되었습니다.');
       } else {
         const displayResult = typeof result === 'object' ? JSON.stringify(result, null, 2) : result;
         alert('실행 성공:\n' + displayResult);
@@ -154,8 +173,9 @@ const InterfacePage: React.FC = () => {
               className="border p-2 w-full rounded focus:ring-2 focus:ring-blue-500 outline-none" 
               value={protocol} 
               onChange={(e) => {
-                setProtocol(e.target.value as ProtocolType);
-                setFormData({});
+                const nextProtocol = e.target.value as ProtocolType;
+                setProtocol(nextProtocol);
+                setFormData(prev => ({ protocol: prev.protocol || 'SFTP' }));
                 setArgData({});
               }}
             >
@@ -178,13 +198,19 @@ const InterfacePage: React.FC = () => {
           <div className="bg-gray-50 p-4 rounded-md">
             <h2 className="text-sm font-semibold mb-3 text-gray-600">상세 설정 ({protocol})</h2>
             <DynamicForm fields={PROTOCOL_SCHEMAS[protocol].configFields} onChange={setFormData} initialData={formData} />
+            {protocol === 'FILE' && (
+              <FileExplorer 
+                config={formData} 
+                onSelect={handleSelectFiles} 
+              />
+            )}
           </div>
           <div className="bg-gray-50 p-4 rounded-md">
             <h2 className="text-sm font-semibold mb-3 text-gray-600">실행 인자값 (저장된 값으로 실행됨)</h2>
             <DynamicForm 
               fields={PROTOCOL_SCHEMAS[protocol].argFields} 
               onChange={setArgData} 
-              initialData={argData} 
+              initialData={{ ...formData, ...argData }} 
               supportsRawBody={PROTOCOL_SCHEMAS[protocol].supportsRawBody}
             />
           </div>
