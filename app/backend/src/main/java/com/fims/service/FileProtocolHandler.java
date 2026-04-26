@@ -19,6 +19,12 @@ import java.util.Properties;
 @Service
 public class FileProtocolHandler implements ProtocolHandler {
 
+    private final LoggingService loggingService;
+
+    public FileProtocolHandler(LoggingService loggingService) {
+        this.loggingService = loggingService;
+    }
+
     @Override
     public boolean supports(String protocolType) {
         return "FILE".equalsIgnoreCase(protocolType) || "SFTP".equalsIgnoreCase(protocolType);
@@ -131,10 +137,21 @@ public class FileProtocolHandler implements ProtocolHandler {
         String protocol = (String) config.getOrDefault("protocol", "SFTP");
         String mode = (String) config.getOrDefault("mode", "UPLOAD");
         
-        if ("FTP".equalsIgnoreCase(protocol)) {
-            return executeFtp(config, mode, payload);
-        } else {
-            return executeSftp(config, mode, payload);
+        long startTime = System.currentTimeMillis();
+        try {
+            Object result;
+            if ("FTP".equalsIgnoreCase(protocol)) {
+                result = executeFtp(config, mode, payload);
+            } else {
+                result = executeSftp(config, mode, payload);
+            }
+            long duration = System.currentTimeMillis() - startTime;
+            loggingService.log(entity.getId(), "FILE", "Mode: " + mode, "SUCCESS", null, "Operation completed", duration);
+            return result;
+        } catch (Exception e) {
+            long duration = System.currentTimeMillis() - startTime;
+            loggingService.log(entity.getId(), "FILE", "Mode: " + mode, "FAIL", e.getMessage(), null, duration);
+            throw e;
         }
     }
 

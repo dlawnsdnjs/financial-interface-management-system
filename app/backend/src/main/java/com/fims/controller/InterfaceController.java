@@ -15,10 +15,12 @@ public class InterfaceController {
 
     private final InterfaceRepository repository;
     private final InterfaceService interfaceService;
+    private final com.fims.service.FileProtocolHandler fileProtocolHandler;
 
-    public InterfaceController(InterfaceRepository repository, InterfaceService interfaceService) {
+    public InterfaceController(InterfaceRepository repository, InterfaceService interfaceService, com.fims.service.FileProtocolHandler fileProtocolHandler) {
         this.repository = repository;
         this.interfaceService = interfaceService;
+        this.fileProtocolHandler = fileProtocolHandler;
     }
 
     @GetMapping
@@ -78,6 +80,21 @@ public class InterfaceController {
         }
     }
 
+    @PostMapping("/execute-bulk")
+    public ResponseEntity<Object> executeBulk(@RequestBody List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return ResponseEntity.badRequest().body("No interface IDs provided");
+        }
+        
+        try {
+            // 비동기 병렬 처리
+            List<Object> results = interfaceService.processBulk(ids);
+            return ResponseEntity.ok(results);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Bulk execution failed: " + e.getMessage());
+        }
+    }
+
     @PostMapping("/ftp/list")
     public ResponseEntity<Object> listFtpFiles(@RequestBody Map<String, Object> request) {
         Map<String, Object> config = (Map<String, Object>) request.get("config");
@@ -87,9 +104,8 @@ public class InterfaceController {
             return ResponseEntity.badRequest().body("Config or Host missing");
         }
         
-        com.fims.service.FileProtocolHandler handler = new com.fims.service.FileProtocolHandler();
         try {
-            return ResponseEntity.ok(handler.listDirectory(config, remotePath));
+            return ResponseEntity.ok(fileProtocolHandler.listDirectory(config, remotePath));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("FTP listing error: " + e.getMessage());
         }

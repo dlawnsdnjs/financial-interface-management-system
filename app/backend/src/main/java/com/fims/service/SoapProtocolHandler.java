@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.oxm.jaxb.Jaxb2Marshaller;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -19,12 +20,13 @@ public class SoapProtocolHandler implements ProtocolHandler {
 
     private final WebServiceTemplate webServiceTemplate;
     private final RestTemplate restTemplate;
+    private final LoggingService loggingService;
     private static final javax.xml.transform.TransformerFactory TRANSFORMER_FACTORY = javax.xml.transform.TransformerFactory.newInstance();
 
-    public SoapProtocolHandler() {
+    public SoapProtocolHandler(LoggingService loggingService) {
         this.webServiceTemplate = new WebServiceTemplate();
-        // Jaxb2Marshaller는 실제 클래스가 있을 때만 설정해야 하므로 기본 생성자에서는 제외
         this.restTemplate = new RestTemplate();
+        this.loggingService = loggingService;
     }
 
     @Override
@@ -48,13 +50,14 @@ public class SoapProtocolHandler implements ProtocolHandler {
             effectivePayload = entity.getDefaultArguments();
         }
 
+        Object responseObj = null;
+        long startTime = System.currentTimeMillis();
         try {
             if (effectivePayload instanceof Map && ((Map<?, ?>) effectivePayload).containsKey("rawBody")) {
                 String rawBody = (String) ((Map<?, ?>) effectivePayload).get("rawBody");
                 if (rawBody == null) rawBody = "";
                 
                 String trimmedBody = rawBody.trim();
-                // Envelope 포함 여부를 더 단순하고 확실하게 체크
                 boolean hasEnvelope = trimmedBody.toLowerCase().contains("<soap:envelope") 
                                    || trimmedBody.toLowerCase().contains("<soap12:envelope")
                                    || trimmedBody.toLowerCase().contains("<envelope");
@@ -66,12 +69,17 @@ public class SoapProtocolHandler implements ProtocolHandler {
                     if (soapAction != null && !soapAction.isEmpty()) {
                         headers.set("SOAPAction", soapAction);
                     }
-                    
+
                     HttpEntity<String> request = new HttpEntity<>(rawBody, headers);
-                    return restTemplate.postForObject(wsdlUrl, request, String.class);
+                    ResponseEntity<String> response = restTemplate.postForEntity(wsdlUrl, request, String.class);
+                    responseObj = response.getBody();
+
+                    if (!response.getStatusCode().is2xxSuccessful()) {
+                        throw new RuntimeException("SOAP HTTP Failure: " + response.getStatusCode().value());
+                    }
                 } else {
                     log.info("Detected payload only. Using WebServiceTemplate.sendSourceAndReceive.");
-                    return webServiceTemplate.sendSourceAndReceive(wsdlUrl,
+                    responseObj = webServiceTemplate.sendSourceAndReceive(wsdlUrl,
                             new org.springframework.xml.transform.StringSource(rawBody),
                             response -> {
                                 try {
@@ -87,20 +95,23 @@ public class SoapProtocolHandler implements ProtocolHandler {
                 }
             } else {
                 log.info("No rawBody found. Attempting execution with payload.");
-                // 마샬러가 설정되지 않았을 가능성을 고려하여 안전하게 처리
                 try {
                     Object response = webServiceTemplate.marshalSendAndReceive(wsdlUrl, effectivePayload);
-                    return response != null ? response.toString() : "Success";
+                    responseObj = response != null ? response.toString() : "Success";
                 } catch (IllegalStateException e) {
                     if (e.getMessage().contains("No marshaller registered")) {
-                        log.warn("WebServiceTemplate has no marshaller. Please use 'Raw Mode' with full XML Envelope.");
                         throw new RuntimeException("SOAP execution failed: No marshaller registered. Please use 'Raw Mode' in execution arguments to send full XML.");
                     }
                     throw e;
                 }
             }
+            long duration = System.currentTimeMillis() - startTime;
+            loggingService.log(entity.getId(), "SOAP", effectivePayload, "SUCCESS", null, responseObj, duration);
+            return responseObj;
         } catch (Exception e) {
+            long duration = System.currentTimeMillis() - startTime;
             log.error("SOAP execution error: {}", e.getMessage(), e);
+            loggingService.log(entity.getId(), "SOAP", effectivePayload, "FAIL", e.getMessage(), null, duration);
             throw new RuntimeException("SOAP request failed: " + e.getMessage(), e);
         }
     }

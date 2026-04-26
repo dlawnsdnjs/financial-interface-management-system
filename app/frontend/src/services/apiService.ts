@@ -9,6 +9,18 @@ export interface InterfaceEntity {
   description?: string;
   enabled: boolean;
   protocolConfig: any;
+  defaultArguments?: any;
+}
+
+export interface MessageLog {
+  id: number;
+  interfaceId: number;
+  protocol: string;
+  payload: string;
+  response: string;
+  status: 'SUCCESS' | 'FAIL';
+  errorMessage: string;
+  createdAt: string;
 }
 
 export const getInterfaces = async () => {
@@ -33,6 +45,26 @@ export const updateInterface = async (id: number, entity: InterfaceEntity) => {
 
 export const deleteInterface = async (id: number) => {
   const response = await axios.delete(`${API_BASE_URL}/interfaces/${id}`);
+  return response.data;
+};
+
+export const getInterfaceLogs = async (interfaceId: number) => {
+  const response = await axios.get(`${API_BASE_URL}/monitor/logs/${interfaceId}`);
+  return response.data;
+};
+
+export const getInterfaceStats = async (interfaceId: number) => {
+  const response = await axios.get(`${API_BASE_URL}/monitor/stats/${interfaceId}`);
+  return response.data;
+};
+
+export const getRecentLogs = async () => {
+  const response = await axios.get(`${API_BASE_URL}/monitor/recent-logs`);
+  return response.data;
+};
+
+export const retryInterface = async (logId: number) => {
+  const response = await axios.post(`${API_BASE_URL}/monitor/retry/${logId}`);
   return response.data;
 };
 

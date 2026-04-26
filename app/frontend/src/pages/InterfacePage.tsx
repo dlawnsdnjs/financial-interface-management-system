@@ -2,15 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { PROTOCOL_SCHEMAS, ProtocolType } from '../types/protocol';
 import { DynamicForm } from '../components/DynamicForm';
 import { FileExplorer } from '../components/FileExplorer';
+import { LogDetailModal } from '../components/LogDetailModal';
 import { 
   getInterfaces, 
   createInterface, 
   updateInterface, 
   deleteInterface, 
   executeInterface, 
-  InterfaceEntity 
+  InterfaceEntity,
+  MessageLog 
 } from '../services/apiService';
-import { Play, Edit, Trash2, Plus, CheckCircle, AlertCircle } from 'lucide-react';
+import { Play, Edit, Trash2, Plus, CheckCircle, AlertCircle, Info, Settings, Database } from 'lucide-react';
+import EmptyState from '../components/EmptyState';
 
 const InterfacePage: React.FC = () => {
   const [interfaces, setInterfaces] = useState<InterfaceEntity[]>([]);
@@ -21,7 +24,11 @@ const InterfacePage: React.FC = () => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [itemLoadingIds, setItemLoadingIds] = useState<number[]>([]);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [detailLog, setDetailLog] = useState<MessageLog | null>(null);
 
   useEffect(() => {
     loadInterfaces();
@@ -38,18 +45,20 @@ const InterfacePage: React.FC = () => {
   const loadInterfaces = async () => {
     try {
       const data = await getInterfaces();
-      setInterfaces(data);
+      setInterfaces(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to load interfaces', error);
+      setInterfaces([]);
     }
   };
 
   const handleEdit = (item: InterfaceEntity) => {
+    if (!item) return;
     setEditingId(item.id!);
-    setName(item.name);
+    setName(item.name || '');
     setDescription(item.description || '');
-    setProtocol(item.protocolType as ProtocolType);
-    setFormData(item.protocolConfig);
+    setProtocol((item.protocolType as ProtocolType) || 'REST');
+    setFormData(item.protocolConfig || {});
     setArgData(item.defaultArguments || {});
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -78,15 +87,15 @@ const InterfacePage: React.FC = () => {
     try {
       if (editingId) {
         await updateInterface(editingId, payload);
-        setMessage({ text: '수정 완료', type: 'success' });
+        setMessage({ text: '인터페이스가 성공적으로 수정되었습니다.', type: 'success' });
       } else {
         await createInterface(payload);
-        setMessage({ text: '장 완료', type: 'success' });
+        setMessage({ text: '새로운 인터페이스가 등록되었습니다.', type: 'success' });
       }
       resetForm();
       loadInterfaces();
     } catch (error) {
-      setMessage({ text: '작업 실패', type: 'error' });
+      setMessage({ text: '작업 중 오류가 발생했습니다.', type: 'error' });
     } finally {
       setLoading(false);
       setTimeout(() => setMessage(null), 3000);
@@ -94,7 +103,7 @@ const InterfacePage: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('정말 삭제하시겠습니까?')) return;
+    if (!confirm('정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
     try {
       await deleteInterface(id);
       loadInterfaces();
@@ -104,167 +113,250 @@ const InterfacePage: React.FC = () => {
   };
 
   const handleExecute = async (item: InterfaceEntity, payload: any = null) => {
+    if (!item?.id) return;
+    setItemLoadingIds(prev => [...prev, item.id!]);
     try {
-      setLoading(true);
-      const result = await executeInterface(item.id!, payload);
-      
-      if (result && typeof result === 'object' && (result.type === 'file' || result.type === 'multi-file')) {
-        const processFile = (fileName: string, content: string) => {
-          const byteCharacters = atob(content);
-          const byteNumbers = new Array(byteCharacters.length);
-          for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
-          }
-          const byteArray = new Uint8Array(byteNumbers);
-          const blob = new Blob([byteArray], { type: 'application/octet-stream' });
-          const link = document.createElement('a');
-          link.href = window.URL.createObjectURL(blob);
-          link.download = fileName;
-          link.click();
-        };
-
-        if (result.type === 'file') {
-          processFile(result.fileName, result.content);
-        } else {
-          Object.entries(result).forEach(([key, value]) => {
-            if (key !== 'type') {
-              processFile(key, value as string);
-            }
-          });
-        }
-        
-        alert('파일 다운로드 요청이 완료되었습니다.');
+      const result = await executeInterface(item.id, payload);
+      // 결과가 로그 데이터라면 모달로 표시
+      if (result && typeof result === 'object' && ('status' in result || 'payload' in result)) {
+        setDetailLog(result as MessageLog);
       } else {
-        const displayResult = typeof result === 'object' ? JSON.stringify(result, null, 2) : result;
-        alert('실행 성공:\n' + displayResult);
+        alert(`[${item.name}] 실행 완료`);
       }
     } catch (error: any) {
-      const errorMsg = error.response?.data 
-        ? (typeof error.response.data === 'object' ? JSON.stringify(error.response.data, null, 2) : error.response.data)
-        : error.message;
-      alert('실행 실패:\n' + errorMsg);
+      alert(`[${item.name}] 실행 실패: ${error.message}`);
     } finally {
-      setLoading(false);
+      setItemLoadingIds(prev => prev.filter(id => id !== item.id!));
     }
   };
 
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
+  const handleBulkExecute = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`${selectedIds.length}개의 인터페이스를 백그라운드에서 일괄 실행하시겠습니까?`)) return;
+    
+    setBulkLoading(true);
+    try {
+      await fetch('http://localhost:8080/api/interfaces/execute-bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(selectedIds)
+      });
+      alert(`${selectedIds.length}개의 인터페이스 일괄 실행이 완료되었습니다.`);
+      setSelectedIds([]);
+    } catch (e: any) {
+      alert('일괄 실행 실패: ' + e.message);
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const currentSchema = PROTOCOL_SCHEMAS[protocol] || PROTOCOL_SCHEMAS['REST'];
+
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-8">
-      <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-        <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
-          {editingId ? <Edit size={24} /> : <Plus size={24} />}
-          {editingId ? '인터페이스 수정' : '새 인터페이스 등록'}
-        </h1>
+    <div className="space-y-8 animate-in fade-in duration-500 pb-20">
+      <div className="flex justify-between items-end border-b border-gray-200 pb-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">인터페이스 관리</h1>
+          <p className="text-gray-500 text-sm mt-1">시스템 간 데이터 연동을 위한 프로토콜 및 엔드포인트를 설정합니다.</p>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex items-center gap-2">
+          {editingId ? <Edit size={18} className="text-blue-600" /> : <Plus size={18} className="text-orange-600" />}
+          <h2 className="text-base font-bold text-gray-800">
+            {editingId ? '인터페이스 구성 편집' : '신규 인터페이스 생성'}
+          </h2>
+        </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">인터페이스 이름</label>
-            <input 
-              className="border p-2 w-full rounded focus:ring-2 focus:ring-blue-500 outline-none" 
-              placeholder="예: 고객 정보 동기화" 
-              value={name} 
-              onChange={(e) => setName(e.target.value)} 
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">프로토콜 타입</label>
-            <select 
-              className="border p-2 w-full rounded focus:ring-2 focus:ring-blue-500 outline-none" 
-              value={protocol} 
-              onChange={(e) => {
-                const nextProtocol = e.target.value as ProtocolType;
-                setProtocol(nextProtocol);
-                setFormData(prev => ({ protocol: prev.protocol || 'SFTP' }));
-                setArgData({});
-              }}
-            >
-              {Object.keys(PROTOCOL_SCHEMAS).map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
-          </div>
-        </div>
-
-        <div className="mb-4">
-          <label className="block text-sm font-medium mb-1">설명</label>
-          <input 
-            className="border p-2 w-full rounded focus:ring-2 focus:ring-blue-500 outline-none" 
-            placeholder="인터페이스에 대한 설명을 입력하세요" 
-            value={description} 
-            onChange={(e) => setDescription(e.target.value)} 
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <div className="bg-gray-50 p-4 rounded-md">
-            <h2 className="text-sm font-semibold mb-3 text-gray-600">상세 설정 ({protocol})</h2>
-            <DynamicForm fields={PROTOCOL_SCHEMAS[protocol].configFields} onChange={setFormData} initialData={formData} />
-            {protocol === 'FILE' && (
-              <FileExplorer 
-                config={formData} 
-                onSelect={handleSelectFiles} 
+        <div className="p-6 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">인터페이스 명칭</label>
+              <input 
+                className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-all text-sm" 
+                placeholder="예: ERP 고객 데이터 연동" 
+                value={name} 
+                onChange={(e) => setName(e.target.value)} 
               />
-            )}
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">통신 프로토콜</label>
+              <select 
+                className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-all text-sm" 
+                value={protocol} 
+                onChange={(e) => {
+                  const nextProtocol = e.target.value as ProtocolType;
+                  setProtocol(nextProtocol);
+                  setFormData(prev => ({ protocol: prev.protocol || 'SFTP' }));
+                  setArgData({});
+                }}
+              >
+                {Object.keys(PROTOCOL_SCHEMAS).map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
           </div>
-          <div className="bg-gray-50 p-4 rounded-md">
-            <h2 className="text-sm font-semibold mb-3 text-gray-600">실행 인자값 (저장된 값으로 실행됨)</h2>
-            <DynamicForm 
-              fields={PROTOCOL_SCHEMAS[protocol].argFields} 
-              onChange={setArgData} 
-              initialData={{ ...formData, ...argData }} 
-              supportsRawBody={PROTOCOL_SCHEMAS[protocol].supportsRawBody}
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">상세 설명</label>
+            <input 
+              className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-all text-sm" 
+              placeholder="해당 인터페이스의 용도 및 특이사항을 입력하세요." 
+              value={description} 
+              onChange={(e) => setDescription(e.target.value)} 
             />
           </div>
-        </div>
 
-        <div className="flex gap-2">
-          <button 
-            className={`flex-1 py-2 rounded text-white font-medium flex items-center justify-center gap-2 ${loading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`} 
-            onClick={handleSubmit}
-            disabled={loading}
-          >
-            {loading ? '처리 중...' : (editingId ? '수정하기' : '등록하기')}
-          </button>
-          {editingId && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="bg-gray-50 p-5 rounded border border-gray-200">
+              <div className="flex items-center gap-2 mb-4 border-b border-gray-200 pb-2">
+                <Settings size={16} className="text-gray-400" />
+                <h3 className="text-sm font-bold text-gray-700">연결 구성 ({protocol})</h3>
+              </div>
+              <DynamicForm fields={currentSchema.configFields || []} onChange={setFormData} initialData={formData} />
+              {protocol === 'FILE' && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <FileExplorer 
+                    config={formData} 
+                    onSelect={handleSelectFiles} 
+                  />
+                </div>
+              )}
+            </div>
+            <div className="bg-gray-50 p-5 rounded border border-gray-200">
+              <div className="flex items-center gap-2 mb-4 border-b border-gray-200 pb-2">
+                <Database size={16} className="text-gray-400" />
+                <h3 className="text-sm font-bold text-gray-700">기본 실행 파라미터</h3>
+              </div>
+              <DynamicForm 
+                fields={currentSchema.argFields || []} 
+                onChange={setArgData} 
+                initialData={{ ...formData, ...argData }} 
+                supportsRawBody={currentSchema.supportsRawBody}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+            <div className="flex-1">
+              {message && (
+                <div className={`text-sm flex items-center gap-2 font-medium ${message.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                  {message.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+                  {message.text}
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3">
+              {editingId && (
+                <button 
+                  className="px-6 py-2 border border-gray-300 rounded text-sm font-bold text-gray-600 hover:bg-gray-100 transition-colors" 
+                  onClick={resetForm}
+                >
+                  변경 취소
+                </button>
+              )}
+              <button 
+                className={`px-8 py-2 rounded text-white text-sm font-bold shadow-sm transition-all ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600 active:scale-95'}`} 
+                onClick={handleSubmit}
+                disabled={loading}
+              >
+                {loading ? '처리 중...' : (editingId ? '구성 업데이트' : '인터페이스 생성')}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
+          <div className="flex items-center gap-2">
+            <Database size={18} className="text-blue-600" />
+            <h2 className="text-base font-bold text-gray-800">등록된 인터페이스 목록 ({interfaces.length})</h2>
+          </div>
+          {selectedIds.length > 0 && (
             <button 
-              className="px-6 py-2 border border-gray-300 rounded hover:bg-gray-100" 
-              onClick={resetForm}
+              className={`px-4 py-1.5 rounded text-xs font-bold shadow-sm transition-all ${bulkLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+              onClick={handleBulkExecute}
+              disabled={bulkLoading}
             >
-              취소
+              {bulkLoading ? '처리 중...' : `일괄 실행 (${selectedIds.length})`}
             </button>
           )}
         </div>
-
-        {message && (
-          <div className={`mt-4 p-3 rounded flex items-center gap-2 ${message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-            {message.type === 'success' ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
-            {message.text}
+        
+        {interfaces.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="bg-gray-50 text-gray-500 border-b border-gray-200">
+                  <th className="px-6 py-3 w-10 text-center"><input type="checkbox" onChange={(e) => setSelectedIds(e.target.checked ? interfaces.map(i => i.id!) : [])} checked={selectedIds.length === interfaces.length && interfaces.length > 0} /></th>
+                  <th className="px-6 py-3 font-bold uppercase tracking-wider">이름 / 식별자</th>
+                  <th className="px-6 py-3 font-bold uppercase tracking-wider text-center">프로토콜</th>
+                  <th className="px-6 py-3 font-bold uppercase tracking-wider text-right">관리 액션</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {interfaces.map(item => (
+                  <tr key={item?.id || Math.random()} className="group hover:bg-blue-50/30 transition-colors">
+                    <td className="px-6 py-4 w-10 text-center"><input type="checkbox" checked={selectedIds.includes(item.id!)} onChange={() => toggleSelect(item.id!)} /></td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{item?.name || 'Untitled'}</span>
+                        <span className="text-xs text-gray-400 truncate max-w-xs">{item?.description || 'No description provided'}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] font-black uppercase">{item?.protocolType || 'N/A'}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex justify-end gap-1">
+                        <button 
+                          title="즉시 실행"
+                          className="p-2 text-green-600 hover:bg-green-100 rounded transition-colors" 
+                          onClick={() => handleExecute(item)} 
+                          disabled={itemLoadingIds.includes(item.id!)}
+                        >
+                          {itemLoadingIds.includes(item.id!) ? '...' : <Play size={18} fill="currentColor" />}
+                        </button>
+                        <button 
+                          title="편집"
+                          className="p-2 text-blue-600 hover:bg-blue-100 rounded transition-all" 
+                          onClick={() => handleEdit(item)}
+                        >
+                          <Edit size={18} />
+                        </button>
+                        <button 
+                          title="삭제"
+                          className="p-2 text-red-600 hover:bg-red-100 rounded transition-colors" 
+                          onClick={() => handleDelete(item.id!)}
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="p-12">
+            <EmptyState 
+              icon={Info} 
+              title="데이터가 비어있습니다" 
+              description="상단의 폼을 사용하여 첫 번째 인터페이스를 등록해보세요."
+            />
           </div>
         )}
       </div>
 
-      <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="bg-gray-100 text-gray-600 text-sm uppercase">
-              <th className="p-4 font-semibold">이름</th>
-              <th className="p-4 font-semibold">프로토콜</th>
-              <th className="p-4 font-semibold text-center">액션</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {interfaces.map(item => (
-              <tr key={item.id} className="hover:bg-gray-50">
-                <td className="p-4 font-medium">{item.name}</td>
-                <td className="p-4 text-xs font-semibold uppercase">{item.protocolType}</td>
-                <td className="p-4 flex justify-center gap-2">
-                  <button className="p-2 text-green-600 hover:bg-green-50 rounded" onClick={() => handleExecute(item)} disabled={loading}><Play size={18} /></button>
-                  <button className="p-2 text-blue-600 hover:bg-blue-50 rounded" onClick={() => handleEdit(item)}><Edit size={18} /></button>
-                  <button className="p-2 text-red-600 hover:bg-red-50 rounded" onClick={() => handleDelete(item.id!)}><Trash2 size={18} /></button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {detailLog && (
+        <LogDetailModal log={detailLog} onClose={() => setDetailLog(null)} />
+      )}
     </div>
   );
 };

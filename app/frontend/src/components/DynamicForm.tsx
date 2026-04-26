@@ -44,25 +44,63 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({ fields, onChange, init
         </div>
       ) : (
         fields
-          .filter(field => !field.visibleIf || field.visibleIf(initialData))
+          .filter(field => {
+            if (field.visibleIf) return field.visibleIf(initialData);
+            if (field.visibleWhen) {
+                // 간단한 조건식 평가: key.includes("value") 형태 지원
+                const match = field.visibleWhen.match(/(\w+)\.includes\("(\w+)"\)/);
+                if (match) {
+                    const [_, key, value] = match;
+                    return Array.isArray(initialData[key]) && initialData[key].includes(value);
+                }
+            }
+            return true;
+          })
           .map((field: FieldConfig) => (
           <div key={field.name} className="flex flex-col">
             <label className="text-sm font-medium mb-1 text-gray-700">{field.label}</label>
+            {field.helper && <p className="text-xs text-gray-500 mb-1">{field.helper}</p>}
+            
             {field.type === 'select' ? (
               <select
                 className="border p-2 rounded focus:ring-2 focus:ring-blue-500"
-                value={initialData[field.name] || ''}
+                value={initialData[field.name] || field.default || ''}
                 onChange={(e) => handleChange(field.name, e.target.value)}
               >
                 <option value="">선택하세요</option>
-                {field.options?.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
+                {field.options?.map(opt => {
+                  const label = typeof opt === 'string' ? opt : opt.label;
+                  const value = typeof opt === 'string' ? opt : opt.value;
+                  return <option key={value} value={value}>{label}</option>;
+                })}
               </select>
+            ) : field.type === 'multiselect' ? (
+              <div className="flex gap-4 p-2 border rounded">
+                {(field.options || []).map(opt => {
+                  const label = typeof opt === 'string' ? opt : opt.label;
+                  const value = typeof opt === 'string' ? opt : opt.value;
+                  const selectedValues = Array.isArray(initialData[field.name]) ? initialData[field.name] : (Array.isArray(field.default) ? [...field.default] : []);
+                  return (
+                    <label key={value} className="flex items-center gap-2">
+                      <input 
+                        type="checkbox"
+                        checked={selectedValues.includes(value)}
+                        onChange={(e) => {
+                          const next = e.target.checked 
+                            ? [...selectedValues, value]
+                            : selectedValues.filter((v: any) => v !== value);
+                          handleChange(field.name, next);
+                        }}
+                      />
+                      {label}
+                    </label>
+                  );
+                })}
+              </div>
             ) : field.type === 'textarea' ? (
               <textarea
                 className="border p-2 rounded h-32 focus:ring-2 focus:ring-blue-500"
-                value={initialData[field.name] || ''}
+                value={initialData[field.name] || field.default || ''}
                 onChange={(e) => handleChange(field.name, e.target.value)}
               />
             ) : field.type === 'file' ? (
@@ -95,7 +133,8 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({ fields, onChange, init
               <input
                 type={field.type}
                 className="border p-2 rounded focus:ring-2 focus:ring-blue-500"
-                value={initialData[field.name] || ''}
+                value={initialData[field.name] || field.default || ''}
+                placeholder={field.placeholder}
                 onChange={(e) => handleChange(field.name, e.target.value)}
               />
             )}

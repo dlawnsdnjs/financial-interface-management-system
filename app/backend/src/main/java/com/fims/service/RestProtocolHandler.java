@@ -18,10 +18,12 @@ public class RestProtocolHandler implements ProtocolHandler {
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final LoggingService loggingService;
 
-    public RestProtocolHandler() {
+    public RestProtocolHandler(LoggingService loggingService) {
         this.restTemplate = new RestTemplate();
         this.objectMapper = new ObjectMapper();
+        this.loggingService = loggingService;
     }
 
     @Override
@@ -44,18 +46,13 @@ public class RestProtocolHandler implements ProtocolHandler {
         
         try {
             Object rawData = payload;
-            // payload가 null이거나 빈 맵이면 기본 인자 사용
             if (rawData == null || (rawData instanceof Map && ((Map<?, ?>) rawData).isEmpty())) {
                 rawData = entity.getDefaultArguments();
             }
             
-            log.info("Processing raw data: {}", rawData);
-
             if (rawData instanceof Map) {
                 Map<String, Object> map = (Map<String, Object>) rawData;
                 Object innerValue = null;
-                
-                // 우선순위: params -> body -> rawBody
                 if (map.containsKey("params") && map.get("params") != null && !map.get("params").toString().isEmpty()) {
                     innerValue = map.get("params");
                 } else if (map.containsKey("body")) {
@@ -67,15 +64,11 @@ public class RestProtocolHandler implements ProtocolHandler {
                 if (innerValue instanceof String) {
                     String str = innerValue.toString().trim();
                     if (str.startsWith("{")) {
-                        log.info("Parsing inner JSON string: {}", str);
                         finalParams = objectMapper.readValue(str, Map.class);
-                    } else if (!str.isEmpty()) {
-                        log.warn("Inner value is string but not JSON: {}", str);
                     }
                 } else if (innerValue instanceof Map) {
                     finalParams = (Map<String, Object>) innerValue;
                 } else {
-                    // 내부 키가 유효하지 않으면 맵 전체를 사용
                     finalParams = map;
                 }
             } else if (rawData instanceof String) {
@@ -92,7 +85,6 @@ public class RestProtocolHandler implements ProtocolHandler {
         if ("GET".equals(method)) {
             UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(url);
             if (finalParams != null && !finalParams.isEmpty()) {
-                log.info("Converting {} keys to query string.", finalParams.size());
                 for (Map.Entry<String, Object> entry : finalParams.entrySet()) {
                     if (entry.getValue() != null) {
                         builder.queryParam(entry.getKey(), entry.getValue().toString());
@@ -112,12 +104,23 @@ public class RestProtocolHandler implements ProtocolHandler {
         
         HttpEntity<Object> requestEntity = new HttpEntity<>(payload, headers);
 
-        log.info("Final Executing URL: {}", url);
+        long startTime = System.currentTimeMillis();
         try {
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.valueOf(method), requestEntity, String.class);
+            long duration = System.currentTimeMillis() - startTime;
+            
+            if (response.getStatusCode().is2xxSuccessful()) {
+                loggingService.log(entity.getId(), "REST", url, "SUCCESS", null, response.getBody(), duration);
+            } else {
+                String errorInfo = "HTTP " + response.getStatusCode().value() + ": " + response.getStatusCode().toString();
+                loggingService.log(entity.getId(), "REST", url, "FAIL", errorInfo, response.getBody(), duration);
+            }
+            
             return response.getBody();
         } catch (Exception e) {
+            long duration = System.currentTimeMillis() - startTime;
             log.error("REST Execution Failed. URL: {}, Error: {}", url, e.getMessage());
+            loggingService.log(entity.getId(), "REST", url, "FAIL", e.getMessage(), null, duration);
             throw new RuntimeException("REST call failed: " + e.getMessage());
         }
     }

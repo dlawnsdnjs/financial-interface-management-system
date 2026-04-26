@@ -1,20 +1,21 @@
-export type ProtocolType = 'SOAP' | 'FILE' | 'MQ' | 'REST';
+export type ProtocolType = 'SOAP' | 'FILE' | 'MQ' | 'REST' | 'BATCH';
 
 export interface FieldConfig {
   name: string;
   label: string;
-  type: 'text' | 'number' | 'password' | 'select' | 'textarea' | 'file';
+  type: 'text' | 'number' | 'password' | 'select' | 'textarea' | 'file' | 'multiselect';
   required?: boolean;
-  options?: { label: string; value: string | number }[];
+  options?: ({ label: string; value: string | number } | string)[];
   placeholder?: string;
-  helpText?: string;
+  helper?: string;
   visibleIf?: (data: Record<string, any>) => boolean;
+  default?: any;
 }
 
 export interface ProtocolSchema {
   protocolType: ProtocolType;
-  configFields: FieldConfig[]; 
-  argFields: FieldConfig[];    
+  configFields: FieldConfig[];
+  argFields: FieldConfig[];
   supportsRawBody?: boolean;
 }
 
@@ -144,5 +145,67 @@ export const PROTOCOL_SCHEMAS: Record<ProtocolType, ProtocolSchema> = {
         placeholder: '{"key1": "value1", "key2": "value2"}' }
     ],
     supportsRawBody: true
+  },
+
+  BATCH: {
+    protocolType: 'BATCH',
+    configFields: [
+      // 기존
+      { name: 'jobName', label: 'Batch Job Name', type: 'text', required: true, placeholder: 'StandardSettlementJob' },
+      { name: 'cron', label: 'Cron Expression', type: 'text', required: true, placeholder: '0 0 0 * * ?',
+        helper: '다음 실행: {cronPreview}' },  // cron 입력 시 다음 실행시각 실시간 표시
+      { name: 'timezone', label: 'Timezone', type: 'select', required: true,
+        options: ['Asia/Seoul', 'UTC'], default: 'Asia/Seoul' },
+      { name: 'description', label: 'Job Description', type: 'text' },
+
+      // 입출력 설정
+      { name: 'inputPath',    label: 'Input Path',    type: 'text', required: false, placeholder: '/data/input/settlement/' },
+      { name: 'outputPath',   label: 'Output Path',   type: 'text', required: false, placeholder: '/data/output/settlement/' },
+      { name: 'filePattern',  label: 'File Pattern',  type: 'text', required: false, placeholder: 'STTL_yyyyMMdd_*.csv' },
+      { name: 'encoding',     label: 'File Encoding', type: 'select',
+        options: ['UTF-8', 'EUC-KR', 'CP949'], default: 'UTF-8' },
+
+      // 처리 설정
+      { name: 'chunkSize',   label: 'Chunk Size',      type: 'number', required: true, default: 1000,
+        helper: '한 트랜잭션에서 처리할 건수' },
+      { name: 'retryLimit',  label: 'Retry Limit',     type: 'number', required: true, default: 3 },
+      { name: 'skipLimit',   label: 'Skip Limit',      type: 'number', required: true, default: 10,
+        helper: '허용 오류 건수 초과 시 Job 실패 처리' },
+      { name: 'timeoutMin',  label: 'Timeout (분)',    type: 'number', required: true, default: 60 },
+
+      // 실패 알림
+      { name: 'onFailNotify', label: '실패 알림 채널', type: 'multiselect',
+        options: ['email', 'slack', 'sms'], default: ['email'] },
+
+// 추가
+      { name: 'notifyEmail', label: '알림 이메일', type: 'text',
+        placeholder: 'ops-team@company.com',
+        visibleWhen: 'onFailNotify.includes("email")',  // email 선택 시에만 표시
+        required: true },
+
+      { name: 'notifySlackWebhook', label: 'Slack Webhook URL', type: 'text',
+        placeholder: 'https://hooks.slack.com/services/...',
+        visibleWhen: 'onFailNotify.includes("slack")',
+        required: true },
+
+      { name: 'notifySmsPhone', label: '알림 수신 번호', type: 'text',
+        placeholder: '010-1234-5678',
+        visibleWhen: 'onFailNotify.includes("sms")',
+        required: true },
+    ],
+
+    argFields: [
+      // 기존
+      { name: 'targetDate', label: 'Target Date (YYYYMMDD)', type: 'text', required: false,
+        placeholder: '비워두면 실행일 자동 적용' },
+
+      // 추가
+      { name: 'rerunYn',    label: '재실행 여부', type: 'select',
+        options: ['N', 'Y'], default: 'N',
+        helper: '동일 targetDate 재실행 허용 여부' },
+      { name: 'dryRunYn',   label: 'Dry Run',    type: 'select',
+        options: ['N', 'Y'], default: 'N',
+        helper: 'Y 시 실제 저장 없이 처리 결과만 확인' },
+    ]
   }
 };
