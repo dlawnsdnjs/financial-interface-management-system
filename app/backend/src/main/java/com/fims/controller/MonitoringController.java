@@ -53,14 +53,6 @@ public class MonitoringController {
                 .collect(Collectors.toList());
     }
 
-    @GetMapping("/recent-errors")
-    @Deprecated
-    public List<MessageLogEntity> getRecentErrors() {
-        return getRecentLogs().stream()
-                .filter(l -> "FAIL".equals(l.getStatus()))
-                .collect(Collectors.toList());
-    }
-
     @PostMapping("/retry/{logId}")
     public Object retry(@PathVariable Long logId) {
         return retryService.retry(logId);

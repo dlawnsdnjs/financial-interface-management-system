@@ -68,12 +68,8 @@ export const retryInterface = async (logId: number) => {
   return response.data;
 };
 
-export const executeInterface = async (id: number, payload?: any) => {
-  const response = await axios.post(`${API_BASE_URL}/interfaces/${id}/execute`, payload || {}, {
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  });
+export const executeInterface = async (id: number) => {
+  const response = await axios.get(`${API_BASE_URL}/interfaces/${id}/execute`);
   return response.data;
 };
 

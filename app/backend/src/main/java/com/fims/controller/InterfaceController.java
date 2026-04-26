@@ -65,15 +65,15 @@ public class InterfaceController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @PostMapping("/{id}/execute")
-    public ResponseEntity<Object> execute(@PathVariable Long id, @RequestBody(required = false) Object payload) {
+    @GetMapping("/{id}/execute")
+    public ResponseEntity<Object> execute(@PathVariable Long id) {
         InterfaceEntity entity = repository.findById(id).orElse(null);
         if (entity == null) {
             return ResponseEntity.notFound().build();
         }
         
         try {
-            Object result = interfaceService.processInterface(entity, payload);
+            Object result = interfaceService.processInterface(entity, null);
             return ResponseEntity.ok(result != null ? result : "Execution completed successfully");
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Execution failed: " + e.getMessage());
